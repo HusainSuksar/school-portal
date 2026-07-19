@@ -121,13 +121,14 @@ export default function Login() {
               <div className="relative">
                 <Key className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input 
-                  type="password" 
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full pl-12 pr-4 py-3.5 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm"
-                />
+  required 
+  placeholder="••••••••" 
+  type="password" 
+  value={password}
+  onChange={(e) => setPassword(e.target.value)}
+  autocomplete="current-password" // <--- ADD THIS ATTRIBUTE TO DISMISS THE WARNING
+  className="w-full pl-12 pr-4 py-3.5 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm" 
+/>
               </div>
             </div>
 

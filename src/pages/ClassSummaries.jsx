@@ -70,9 +70,9 @@ export default function ClassSummaries() {
 
       // 3. Fetch Attendance Records for the whole class
       const { data: attendance } = await supabase
-        .from('attendance_records')
-        .select('student_id, status')
-        .in('student_id', studentIds);
+  .from('attendance')
+  .select('student_id, status')
+  .in('student_id', studentIds);
 
       // 4. Aggregate Data per Student
       const aggregatedData = students.map(student => {
@@ -87,7 +87,7 @@ export default function ClassSummaries() {
 
         // Calculate Attendance
         const studentAtt = attendance ? attendance.filter(a => a.student_id === student.id) : [];
-        const presentDays = studentAtt.filter(a => a.status === 'Present').length;
+        const presentDays = studentAtt.filter(a => a.status === 'Present' || a.status === 'Late').length;
         const attPct = studentAtt.length > 0 ? Math.round((presentDays / studentAtt.length) * 100) : 100;
 
         return {

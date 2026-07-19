@@ -1,6 +1,6 @@
 // src/pages/LeaveApprovals.jsx
 import React, { useState, useEffect } from 'react';
-import { CalendarClock, CheckCircle2, XCircle, Clock, Send, ShieldAlert } from 'lucide-react';
+import { CalendarClock, CheckCircle2, XCircle, Clock, Send, ShieldAlert, User, Users } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 export default function LeaveApprovals() {
@@ -8,7 +8,7 @@ export default function LeaveApprovals() {
   const [requests, setRequests] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Form states for Teachers
+  // Form states for Teachers requesting their own leave
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [reason, setReason] = useState('');
@@ -22,13 +22,48 @@ export default function LeaveApprovals() {
     const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
     if (profile) setUserRole(profile.role);
 
-    // Fetch Requests (RLS will handle filtering automatically!)
-    const { data: leaves } = await supabase
-      .from('leave_requests')
-      .select('*, profiles(full_name)')
-      .order('created_at', { ascending: false });
+    const isAdminOrHOS = profile?.role === 'ADMIN' || profile?.role === 'HOS';
 
-    if (leaves) setRequests(leaves);
+    // 1. Fetch Staff Requests
+    let staffQuery = supabase.from('leave_requests').select('*, profiles(full_name)');
+    // If not admin, only show their own staff requests
+    if (!isAdminOrHOS) {
+      staffQuery = staffQuery.eq('teacher_id', user.id);
+    }
+    const { data: staffLeaves } = await staffQuery;
+
+    // 2. Fetch Student Requests (Only Admins/HOS need to see this in the global queue)
+    let studentLeaves = [];
+    if (isAdminOrHOS) {
+      const { data } = await supabase.from('student_leaves').select('*, students(full_name)');
+      if (data) studentLeaves = data;
+    }
+
+    // 3. Unify and Map the Data
+    const unifiedQueue = [];
+
+    if (staffLeaves) {
+      staffLeaves.forEach(req => unifiedQueue.push({
+        ...req,
+        display_name: req.profiles?.full_name || 'Staff Member',
+        request_type: 'Staff Leave',
+        table_name: 'leave_requests'
+      }));
+    }
+
+    if (studentLeaves) {
+      studentLeaves.forEach(req => unifiedQueue.push({
+        ...req,
+        display_name: req.students?.full_name || 'Student',
+        request_type: req.leave_type || 'Student Leave',
+        table_name: 'student_leaves'
+      }));
+    }
+
+    // 4. Sort by Date (Newest first)
+    unifiedQueue.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    setRequests(unifiedQueue);
     setIsLoading(false);
   };
 
@@ -54,9 +89,10 @@ export default function LeaveApprovals() {
     setIsSubmitting(false);
   };
 
-  const updateStatus = async (id, newStatus) => {
+  // Smart Update: Uses the table_name injected during our fetch phase
+  const updateStatus = async (id, tableName, newStatus) => {
     const { error } = await supabase
-      .from('leave_requests')
+      .from(tableName)
       .update({ status: newStatus })
       .eq('id', id);
 
@@ -76,7 +112,7 @@ export default function LeaveApprovals() {
     );
   }
 
-  const isAdmin = userRole === 'ADMIN';
+  const isAdmin = userRole === 'ADMIN' || userRole === 'HOS';
 
   return (
     <div className="max-w-6xl mx-auto space-y-6 pb-12">
@@ -86,7 +122,7 @@ export default function LeaveApprovals() {
           Leave & Absence Management
         </h2>
         <p className="text-sm text-slate-500 font-medium mt-1">
-          {isAdmin ? 'Review and manage faculty absence requests.' : 'Submit and track your time-off requests.'}
+          {isAdmin ? 'Review and manage all student and faculty absence requests.' : 'Submit and track your time-off requests.'}
         </p>
       </div>
 
@@ -119,25 +155,35 @@ export default function LeaveApprovals() {
         )}
 
         {/* Right Column: The Request Queue */}
-        <div className={`bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden ${isAdmin ? 'lg:col-span-3' : 'lg:col-span-2'}`}>
+        <div className={`bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-[700px] ${isAdmin ? 'lg:col-span-3' : 'lg:col-span-2'}`}>
           <div className="p-4 border-b border-slate-100 bg-slate-50">
             <h3 className="font-bold text-school-navy">{isAdmin ? 'Master Approval Queue' : 'My Request History'}</h3>
           </div>
           
-          <div className="p-4 space-y-4">
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {requests.length > 0 ? requests.map(req => (
-              <div key={req.id} className="p-4 border border-slate-200 rounded-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <div key={`${req.table_name}_${req.id}`} className={`p-4 border border-slate-200 rounded-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-4 ${req.table_name === 'student_leaves' ? 'bg-indigo-50/30' : 'bg-white'}`}>
+                
                 <div>
-                  {isAdmin && <p className="font-bold text-school-navy text-lg">{req.profiles?.full_name}</p>}
-                  <p className="text-sm font-bold text-slate-700 mt-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider flex items-center gap-1 ${req.table_name === 'student_leaves' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600'}`}>
+                      {req.table_name === 'student_leaves' ? <Users className="w-3 h-3" /> : <User className="w-3 h-3" />}
+                      {req.request_type}
+                    </span>
+                  </div>
+
+                  {isAdmin && <p className="font-bold text-school-navy text-lg">{req.display_name}</p>}
+                  
+                  <p className="text-sm font-bold text-slate-700 mt-1 flex items-center gap-1">
+                    <CalendarClock className="w-4 h-4 text-slate-400" />
                     {new Date(req.start_date).toLocaleDateString()} to {new Date(req.end_date).toLocaleDateString()}
                   </p>
-                  <p className="text-sm text-slate-500 mt-1">{req.reason}</p>
+                  <p className="text-sm text-slate-500 mt-2">{req.reason}</p>
                 </div>
                 
-                <div className="flex flex-col md:flex-row items-center gap-3">
+                <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto mt-4 md:mt-0 pt-4 md:pt-0 border-t md:border-t-0 border-slate-100">
                   {/* Status Badge */}
-                  <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider whitespace-nowrap ${
                     req.status === 'Pending' ? 'bg-amber-100 text-amber-700' :
                     req.status === 'Approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
                   }`}>
@@ -147,15 +193,23 @@ export default function LeaveApprovals() {
 
                   {/* Admin Actions */}
                   {isAdmin && req.status === 'Pending' && (
-                    <div className="flex gap-2 border-l border-slate-200 pl-3">
-                      <button onClick={() => updateStatus(req.id, 'Approved')} className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg"><CheckCircle2 className="w-5 h-5" /></button>
-                      <button onClick={() => updateStatus(req.id, 'Rejected')} className="p-2 text-red-600 hover:bg-red-50 rounded-lg"><XCircle className="w-5 h-5" /></button>
+                    <div className="flex gap-2 md:border-l border-slate-200 md:pl-3 w-full md:w-auto justify-end">
+                      <button onClick={() => updateStatus(req.id, req.table_name, 'Approved')} className="p-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white rounded-lg transition-colors border border-emerald-200" title="Approve Request">
+                        <CheckCircle2 className="w-5 h-5" />
+                      </button>
+                      <button onClick={() => updateStatus(req.id, req.table_name, 'Rejected')} className="p-2 bg-red-50 text-red-600 hover:bg-red-600 hover:text-white rounded-lg transition-colors border border-red-200" title="Reject Request">
+                        <XCircle className="w-5 h-5" />
+                      </button>
                     </div>
                   )}
                 </div>
+
               </div>
             )) : (
-              <div className="p-8 text-center text-slate-400">No leave requests found.</div>
+              <div className="h-full flex flex-col items-center justify-center text-slate-400">
+                <CalendarClock className="w-12 h-12 mb-3 opacity-20" />
+                <p className="text-sm font-medium">No leave requests found in the queue.</p>
+              </div>
             )}
           </div>
         </div>

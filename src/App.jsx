@@ -6,7 +6,6 @@ import Layout from './components/Layout';
 import Login from './pages/Login';
 import ParentDashboard from './pages/ParentDashboard';
 import TeacherDashboard from './pages/TeacherDashboard';
-import TakeAttendance from './pages/TakeAttendance';
 import LogPoints from './pages/LogPoints';
 import LessonPlans from './pages/LessonPlans';
 import LessonTemplates from './pages/LessonTemplates';
@@ -28,6 +27,11 @@ import AdminDashboard from './pages/AdminDashboard';
 import AcademicCalendar from './pages/AcademicCalendar';
 import Gradebook from './pages/Gradebook';
 import StaffOnboarding from './pages/StaffOnboarding';
+import AcademicMapping from './pages/AcademicMapping';
+import ParentOnboarding from './pages/ParentOnboarding';
+import Attendance from './pages/Attendance';
+import RequestStudentLeave from './pages/RequestStudentLeave';
+
 const CalendarPage = () => <h2 className="text-3xl font-bold text-school-navy">Academic Calendar</h2>;
 
 export default function App() {
@@ -71,7 +75,6 @@ export default function App() {
           <Route index element={<ParentDashboard />} />
           <Route path="teacher" element={<TeacherDashboard />} />
           <Route path="admin" element={<AdminDashboard />} />
-          <Route path="attendance" element={<TakeAttendance />} />
           <Route path="log-points" element={<LogPoints />} />
           <Route path="lesson-plans" element={<LessonPlans />} />
           <Route path="lesson-templates" element={<LessonTemplates />} />
@@ -92,6 +95,10 @@ export default function App() {
           <Route path="calendar" element={<AcademicCalendar />} />
           <Route path="/gradebook" element={<Gradebook />} />
           <Route path="/staff-onboarding" element={<StaffOnboarding />} />
+          <Route path="/academic-mapping" element={<AcademicMapping />} />
+          <Route path="/parent-onboarding" element={<ParentOnboarding />} />
+          <Route element={<Attendance />} path="/attendance" />
+          <Route element={<RequestStudentLeave />} path="/request-leave" />
         </Route>
         
       </Routes>

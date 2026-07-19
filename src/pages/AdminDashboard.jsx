@@ -68,25 +68,17 @@ export default function AdminDashboard() {
         }
 
         // 4. Today's Attendance Percentage
-        const { data: attendanceToday } = await supabase
-          .from('attendance_registers')
-          .select('id, attendance_records(status)')
-          .eq('register_date', today);
+        // The Corrected Logic for AdminDashboard:
+const { data: attendanceToday } = await supabase
+  .from('attendance')
+  .select('status')
+  .eq('date', today);
 
-        let attPercentage = 0;
-        if (attendanceToday && attendanceToday.length > 0) {
-          let totalRecords = 0;
-          let presentCount = 0;
-          attendanceToday.forEach(reg => {
-            reg.attendance_records.forEach(record => {
-              totalRecords++;
-              if (record.status === 'Present') presentCount++;
-            });
-          });
-          if (totalRecords > 0) {
-            attPercentage = Math.round((presentCount / totalRecords) * 100);
-          }
-        }
+let attPercentage = 0;
+if (attendanceToday && attendanceToday.length > 0) {
+  const attendedCount = attendanceToday.filter(r => r.status === 'Present' || r.status === 'Late').length;
+  attPercentage = Math.round((attendedCount / attendanceToday.length) * 100);
+}
 
         setGlobalStats({
           totalStudents: studentCount || 0,

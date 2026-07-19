@@ -7,7 +7,7 @@ import {
   BookOpen, Users, Calendar, Settings, LogOut, HelpCircle, AlertTriangle, 
   CheckCircle2, Award, FileText, BookTemplate, BarChart2, Trophy, Search, 
   PhoneCall, History, ShieldCheck, Book, Shield, Briefcase , Database, Inbox,
-  LifeBuoy, Activity, GraduationCap, Key, Lock
+  LifeBuoy, Activity, GraduationCap, Key, Lock, Link, CalendarClock
 } from 'lucide-react';
 
 export default function Layout() {
@@ -27,7 +27,6 @@ export default function Layout() {
       const { data: { user } } = await supabase.auth.getUser();
       
       if (user) {
-        // Fetch profile including the password change flag
         const { data } = await supabase
           .from('profiles')
           .select('full_name, role, requires_password_change')
@@ -37,7 +36,6 @@ export default function Layout() {
         if (data) {
           setProfile({ name: data.full_name, role: data.role });
           
-          // Trigger the interceptor if required
           if (data.requires_password_change) {
             setShowPasswordReset(true);
           }
@@ -70,7 +68,6 @@ export default function Layout() {
 
     setIsUpdating(true);
 
-    // 1. Update the password in the Supabase Auth Engine
     const { error: authError } = await supabase.auth.updateUser({
       password: newPassword
     });
@@ -81,20 +78,16 @@ export default function Layout() {
       return;
     }
 
-    // 2. Flip the database flag so this screen never shows again
     const { data: { user } } = await supabase.auth.getUser();
     await supabase.from('profiles')
       .update({ requires_password_change: false })
       .eq('id', user.id);
 
-    // 3. THE FIX: Force a secure logout and redirect to clear old tokens
     await supabase.auth.signOut();
     setShowPasswordReset(false);
     setIsUpdating(false);
-    window.location.href = '/login'; // Send them back to the login screen
+    window.location.href = '/login'; 
   };
-
-
 
   const navLinkClass = ({isActive}) => 
     `flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-sm font-medium ${
@@ -181,9 +174,7 @@ export default function Layout() {
           </div>
         </div>
       )}
-      {/* -------------------------------------- */}
 
-      
       {/* 1. The Dark Navy Sidebar */}
       <aside className="w-64 bg-school-navy flex flex-col justify-between text-slate-300 overflow-y-auto custom-scrollbar">
         
@@ -197,18 +188,18 @@ export default function Layout() {
           
           <nav className="p-4 space-y-6">
             
-            {/* PARENT SPECIFIC LINKS */}
             {isParent && (
-              <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Parent Portal</p>
-                <div className="space-y-1">
-                  <NavLink to="/" className={navLinkClass}><Users className="w-4 h-4" /> My Student</NavLink>
-                  <NavLink to="/calendar" className={navLinkClass}><Calendar className="w-4 h-4" /> Academic Calendar</NavLink>
-                </div>
-              </div>
-            )}
+  <div>
+    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Parent Portal</p>
+    <div className="space-y-1">
+      <NavLink to="/" className={navLinkClass}><Users className="w-4 h-4" /> My Student</NavLink>
+      <NavLink to="/calendar" className={navLinkClass}><Calendar className="w-4 h-4" /> Academic Calendar</NavLink>
+      <NavLink to="/request-leave" className={navLinkClass}><CalendarClock className="w-4 h-4" /> Request Leave</NavLink>
+    </div>
+  </div>
+)}
 
-            {/* STAFF SPECIFIC LINKS (Teachers & Admins) */}
+            {/* STAFF SPECIFIC LINKS */}
             {isStaff && (
               <>
                 <div>
@@ -227,13 +218,13 @@ export default function Layout() {
                     <NavLink to="/lesson-templates" className={navLinkClass}><BookTemplate className="w-4 h-4" /> Lesson Templates</NavLink>
                     <NavLink to="/syllabus-status" className={navLinkClass}><BarChart2 className="w-4 h-4" /> Syllabus Status</NavLink>
                     <NavLink to="/gradebook" className={navLinkClass}><GraduationCap className="w-4 h-4" /> Master Gradebook</NavLink>
+                    <NavLink to="/attendance" className={navLinkClass}><Calendar className="w-4 h-4" /> Daily Attendance</NavLink>
                   </div>
                 </div>
 
                 <div>
                   <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Conduct</p>
                   <div className="space-y-1">
-                    <NavLink to="/attendance" className={navLinkClass}><CheckCircle2 className="w-4 h-4" /> Take Attendance</NavLink>
                     <NavLink to="/log-points" className={navLinkClass}><Award className="w-4 h-4" /> Log Points</NavLink>
                     <NavLink to="/class-summaries" className={navLinkClass}><Trophy className="w-4 h-4" /> Class Summaries</NavLink>
                     <NavLink to="/student-lookup" className={navLinkClass}><Search className="w-4 h-4" /> Student Lookup</NavLink>
@@ -242,7 +233,7 @@ export default function Layout() {
               </>
             )}
 
-            {/* SHARED COMMUNICATION (Everyone) */}
+            {/* SHARED COMMUNICATION */}
             <div>
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Communication</p>
               <div className="space-y-1">
@@ -271,15 +262,15 @@ export default function Layout() {
                     <NavLink to="/its-audit" className={navLinkClass}><Database className="w-4 h-4" /> ITS Audit</NavLink>
                     <NavLink to="/support-inbox" className={navLinkClass}><Inbox className="w-4 h-4" /> Support Inbox</NavLink>
                     <NavLink to="/system-settings" className={navLinkClass}><Settings className="w-4 h-4" /> System Settings</NavLink>
-                    <NavLink to="/staff-onboarding" className={navLinkClass}>
-                      <Users className="w-4 h-4" /> Bulk Staff Onboarding
-                    </NavLink>
+                    <NavLink to="/staff-onboarding" className={navLinkClass}><Users className="w-4 h-4" /> Bulk Staff Onboarding</NavLink>
+                    <NavLink to="/academic-mapping" className={navLinkClass}><BookOpen className="w-4 h-4" /> Academic Mapping</NavLink>
+                    <NavLink to="/parent-onboarding" className={navLinkClass}><Link className="w-4 h-4" /> Parent Linking</NavLink>
                   </div>
                 </div>
               </>
             )}
 
-            {/* MY WORKSPACE (Everyone) */}
+            {/* MY WORKSPACE */}
             <div>
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">My Workspace</p>
               <div className="space-y-1">
@@ -291,7 +282,7 @@ export default function Layout() {
           </nav>
         </div>
 
-        {/* Bottom Section: Dynamic User Profile */}
+        {/* Bottom Section */}
         <div className="p-4 border-t border-slate-700 bg-school-navy sticky bottom-0">
           <div className="flex items-center gap-3 mb-4 px-2">
             <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-white font-bold">
@@ -313,11 +304,8 @@ export default function Layout() {
         </div>
       </aside>
 
-      {/* 2. Main Content Area */}
       <main className="flex-1 relative overflow-y-auto p-8">
         <Outlet />
-
-        {/* 3. Floating Action Buttons */}
         <div className="fixed bottom-6 right-6 flex flex-col gap-3">
           <button className="bg-white p-3 rounded-full shadow-lg text-school-navy hover:bg-slate-50 transition-colors border border-slate-200 cursor-pointer">
             <AlertTriangle className="w-5 h-5" />
@@ -327,7 +315,6 @@ export default function Layout() {
           </button>
         </div>
       </main>
-      
     </div>
   );
 }

@@ -17,8 +17,7 @@ export default function MonitorAttendance() {
     percentage: 0
   });
 
-  useEffect(() => {
-    async function fetchAttendanceData() {
+  async function fetchAttendanceData() {
       setIsLoading(true);
       
       try {
@@ -30,53 +29,56 @@ export default function MonitorAttendance() {
           
         if (classData) setAllClasses(classData);
 
-        // 2. Fetch registers and records for the selected date
-        // Deep joining classes, profiles (teacher), and attendance_records
-        const { data: registersData, error } = await supabase
-          .from('attendance_registers')
-          .select(`
-            id,
-            register_date,
-            classes (id, class_name),
-            profiles (full_name),
-            attendance_records (status)
-          `)
-          .eq('register_date', selectedDate);
+        // 2. Fetch all attendance records for the selected date
+        const { data: attendanceRecords, error } = await supabase
+          .from('attendance')
+          .select('class_id, status, recorded_by, profiles(full_name)')
+          .eq('date', selectedDate);
 
         if (error) throw error;
 
         let totalPresent = 0;
         let totalAbsent = 0;
         let totalLeave = 0;
-        let parsedRegisters = [];
+        
+        // Group the flat records by class
+        const classMap = {};
 
-        if (registersData) {
-          registersData.forEach(reg => {
-            let classPresent = 0;
-            let classAbsent = 0;
-            let classLeave = 0;
+        if (attendanceRecords) {
+          attendanceRecords.forEach(record => {
+            // Global Counters
+            if (record.status === 'Present' || record.status === 'Late') totalPresent++;
+            else if (record.status === 'Absent') totalAbsent++;
+            else if (record.status === 'Excused' || record.status === 'Leave') totalLeave++;
 
-            reg.attendance_records.forEach(record => {
-              if (record.status === 'Present') { classPresent++; totalPresent++; }
-              if (record.status === 'Absent') { classAbsent++; totalAbsent++; }
-              if (record.status === 'Leave') { classLeave++; totalLeave++; }
-            });
-
-            const classTotal = classPresent + classAbsent + classLeave;
-            const classPct = classTotal > 0 ? Math.round((classPresent / classTotal) * 100) : 0;
-
-            parsedRegisters.push({
-              classId: reg.classes.id,
-              className: reg.classes.class_name,
-              submittedBy: reg.profiles.full_name,
-              present: classPresent,
-              total: classTotal,
-              percentage: classPct
-            });
+            // Class Grouping
+            if (!classMap[record.class_id]) {
+              classMap[record.class_id] = {
+                classId: record.class_id,
+                submittedBy: record.profiles?.full_name || 'Unknown',
+                present: 0,
+                total: 0
+              };
+            }
+            
+            classMap[record.class_id].total++;
+            if (record.status === 'Present' || record.status === 'Late') {
+              classMap[record.class_id].present++;
+            }
           });
-          
-          setSubmittedRegisters(parsedRegisters);
         }
+
+        // Convert the map to the array format the UI expects
+        const parsedRegisters = Object.values(classMap).map(reg => {
+          const matchedClass = classData?.find(c => c.id === reg.classId);
+          return {
+            ...reg,
+            className: matchedClass ? matchedClass.class_name : 'Unknown Class',
+            percentage: reg.total > 0 ? Math.round((reg.present / reg.total) * 100) : 0
+          };
+        });
+          
+        setSubmittedRegisters(parsedRegisters);
 
         // Calculate Global Stats
         const globalTotal = totalPresent + totalAbsent + totalLeave;
@@ -95,10 +97,7 @@ export default function MonitorAttendance() {
         setIsLoading(false);
       }
     }
-
-    fetchAttendanceData();
-  }, [selectedDate]);
-
+  
   // Identify classes that have NOT submitted attendance yet
   const submittedClassIds = submittedRegisters.map(r => r.classId);
   const missingClasses = allClasses.filter(c => !submittedClassIds.includes(c.id));

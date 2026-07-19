@@ -49,14 +49,14 @@ export default function StudentLookup() {
     try {
       // Fetch Attendance
       const { data: attendance } = await supabase
-        .from('attendance_records')
+        .from('attendance')
         .select('status')
         .eq('student_id', student.id);
         
       let attPct = 100;
       if (attendance && attendance.length > 0) {
-        const present = attendance.filter(r => r.status === 'Present').length;
-        attPct = Math.round((present / attendance.length) * 100);
+        const presentOrLate = attendance.filter(r => r.status === 'Present' || r.status === 'Late').length;
+        attPct = Math.round((presentOrLate / attendance.length) * 100);
       }
 
       // Fetch Behavior Logs
