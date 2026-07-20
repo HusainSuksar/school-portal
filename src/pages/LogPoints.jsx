@@ -3,22 +3,9 @@ import React, { useState, useEffect } from 'react';
 import { Award, ShieldAlert, Search, CheckCircle2, User } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
-// We will fetch these from a settings table later, but for now we keep the UI options static
-const pointOptions = {
-  Tashjee: [
-    { text: 'Outstanding adab and discipline', pts: 5 },
-    { text: 'Top marks in the weekly test', pts: 3 },
-    { text: 'Excellent participation in class', pts: 3 }
-  ],
-  Tanbeeh: [
-    { text: 'Talking during the lesson', pts: 1 },
-    { text: 'Did not complete homework', pts: 2 },
-    { text: 'Uniform violation', pts: 1 }
-  ]
-};
-
 export default function LogPoints() {
   const [students, setStudents] = useState([]);
+  const [pointRules, setPointRules] = useState({ Tashjee: [], Tanbeeh: [] });
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [logType, setLogType] = useState('Tashjee');
@@ -26,18 +13,28 @@ export default function LogPoints() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
 
-  // 1. Fetch Students on Load
   useEffect(() => {
-    async function fetchStudents() {
-      const { data, error } = await supabase
+    async function loadData() {
+      // 1. Fetch Students
+      const { data: studentData } = await supabase
         .from('students')
         .select('id, full_name, its_number, classes(class_name)')
         .order('full_name');
-      
-      if (data) setStudents(data);
-      if (error) console.error("Error fetching students:", error);
+      if (studentData) setStudents(studentData);
+
+      // 2. Fetch Dynamic Point Rules
+      const { data: rulesData } = await supabase
+        .from('point_rules')
+        .select('*')
+        .order('points', { ascending: false });
+
+      if (rulesData) {
+        const rules = { Tashjee: [], Tanbeeh: [] };
+        rulesData.forEach(r => rules[r.type].push(r));
+        setPointRules(rules);
+      }
     }
-    fetchStudents();
+    loadData();
   }, []);
 
   const filteredStudents = students.filter(s => 
@@ -45,50 +42,37 @@ export default function LogPoints() {
     s.its_number.includes(searchTerm)
   );
 
-  // 2. Handle Database Insert
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!selectedStudent || !selectedReason) return;
     
     setIsSubmitting(true);
     
-    // Find the exact points for the selected reason
-    const reasonData = pointOptions[logType].find(opt => opt.text === selectedReason);
-    
-    // Get the current teacher's user ID
+    const reasonData = pointRules[logType].find(opt => opt.reason === selectedReason);
     const { data: { user } } = await supabase.auth.getUser();
 
-    const { error } = await supabase
-      .from('behavior_logs')
-      .insert([
-        { 
-          student_id: selectedStudent.id,
-          teacher_id: user.id,
-          log_type: logType,
-          points: reasonData.pts,
-          reason: selectedReason
-        }
-      ]);
+    const { error } = await supabase.from('behavior_logs').insert([{ 
+      student_id: selectedStudent.id,
+      teacher_id: user.id,
+      log_type: logType,
+      points: reasonData.points,
+      reason: selectedReason
+    }]);
 
     setIsSubmitting(false);
 
     if (error) {
-      console.error("Error logging points:", error);
-      alert("Failed to log points. See console.");
+      alert("Failed to log points.");
     } else {
       setSuccessMsg(`Successfully awarded ${logType} to ${selectedStudent.full_name}!`);
       setSelectedStudent(null);
       setSelectedReason('');
-      
-      // Clear success message after 3 seconds
       setTimeout(() => setSuccessMsg(''), 3000);
     }
   };
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-12">
-      
-      {/* 1. Page Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-4 border-b border-slate-200">
         <div>
           <h2 className="text-2xl font-bold text-school-navy flex items-center gap-2">
@@ -99,7 +83,6 @@ export default function LogPoints() {
         </div>
       </div>
 
-      {/* Success Notification */}
       {successMsg && (
         <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
           <CheckCircle2 className="w-5 h-5 text-emerald-600" />
@@ -109,7 +92,7 @@ export default function LogPoints() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         
-        {/* 2. Left Column: Student Selection */}
+        {/* Left Column: Student Selection */}
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-[500px]">
           <div className="p-4 border-b border-slate-100 bg-slate-50">
             <h3 className="font-bold text-school-navy mb-3">1. Select Student</h3>
@@ -125,7 +108,7 @@ export default function LogPoints() {
             </div>
           </div>
           
-          <div className="flex-1 overflow-y-auto divide-y divide-slate-100 p-2">
+          <div className="flex-1 overflow-y-auto divide-y divide-slate-100 p-2 custom-scrollbar">
             {filteredStudents.map(student => (
               <div 
                 key={student.id} 
@@ -146,7 +129,7 @@ export default function LogPoints() {
           </div>
         </div>
 
-        {/* 3. Right Column: Form */}
+        {/* Right Column: Form */}
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden h-[500px] flex flex-col">
           <div className="p-4 border-b border-slate-100 bg-slate-50">
             <h3 className="font-bold text-school-navy">2. Award Points</h3>
@@ -154,9 +137,8 @@ export default function LogPoints() {
           
           {selectedStudent ? (
             <form onSubmit={handleSubmit} className="p-6 flex flex-col h-full">
-              
               <div className="mb-6">
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Selected Student</p>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Selected Student</p>
                 <p className="text-lg font-bold text-indigo-700">{selectedStudent.full_name}</p>
               </div>
 
@@ -192,9 +174,9 @@ export default function LogPoints() {
                   required
                 >
                   <option value="" disabled>-- Select a reason --</option>
-                  {pointOptions[logType].map((opt, idx) => (
-                    <option key={idx} value={opt.text}>
-                      {opt.text} ({logType === 'Tashjee' ? '+' : '-'}{opt.pts} PTS)
+                  {pointRules[logType].map((opt, idx) => (
+                    <option key={idx} value={opt.reason}>
+                      {opt.reason} ({logType === 'Tashjee' ? '+' : '-'}{opt.points} PTS)
                     </option>
                   ))}
                 </select>
@@ -211,7 +193,6 @@ export default function LogPoints() {
               >
                 {isSubmitting ? 'Logging to Database...' : `Award ${logType} Points`}
               </button>
-
             </form>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center text-slate-400 p-8 text-center">

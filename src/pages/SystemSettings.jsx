@@ -1,6 +1,6 @@
 // src/pages/SystemSettings.jsx
 import React, { useState, useEffect } from 'react';
-import { Settings, ShieldAlert, Save, Server, BookOpen, AlertTriangle, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Settings, ShieldAlert, Save, Server, BookOpen, AlertTriangle, ToggleLeft, ToggleRight, PlusCircle, Trash2, Award } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 export default function SystemSettings() {
@@ -17,11 +17,17 @@ export default function SystemSettings() {
   const [gradingThreshold, setGradingThreshold] = useState(5);
   const [maintenanceMode, setMaintenanceMode] = useState(false);
 
+  // Dynamic Point Rules State
+  const [pointRules, setPointRules] = useState([]);
+  const [newRuleType, setNewRuleType] = useState('Tashjee');
+  const [newRuleReason, setNewRuleReason] = useState('');
+  const [newRulePoints, setNewRulePoints] = useState(1);
+  const [isAddingRule, setIsAddingRule] = useState(false);
+
   useEffect(() => {
     async function fetchSettings() {
       const { data: { user } } = await supabase.auth.getUser();
       
-      // 1. Security Checkpoint: strictly ADMIN only
       const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
       if (profile?.role !== 'ADMIN') {
         setIsAuthorized(false);
@@ -29,9 +35,8 @@ export default function SystemSettings() {
         return;
       }
 
-      // 2. Fetch the single settings row
-      const { data, error } = await supabase.from('system_settings').select('*').limit(1).single();
-      
+      // Fetch System Variables
+      const { data } = await supabase.from('system_settings').select('*').limit(1).single();
       if (data) {
         setSettingsId(data.id);
         setSchoolName(data.school_name);
@@ -40,6 +45,11 @@ export default function SystemSettings() {
         setGradingThreshold(data.grading_threshold);
         setMaintenanceMode(data.maintenance_mode);
       }
+
+      // Fetch Dynamic Point Rules
+      const { data: rulesData } = await supabase.from('point_rules').select('*').order('type').order('points', { ascending: false });
+      if (rulesData) setPointRules(rulesData);
+
       setIsLoading(false);
     }
     
@@ -64,23 +74,41 @@ export default function SystemSettings() {
       .eq('id', settingsId);
 
     if (error) {
-      console.error("Save error:", error);
       setStatusMsg({ type: 'error', text: 'Failed to update system settings.' });
     } else {
       setStatusMsg({ type: 'success', text: 'Master configurations updated successfully.' });
       setTimeout(() => setStatusMsg({ type: '', text: '' }), 4000);
     }
-    
     setIsSaving(false);
   };
 
-  if (isLoading) {
-    return (
-      <div className="max-w-4xl mx-auto h-[60vh] flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
-  }
+  // --- Dynamic Gamification Logic ---
+  const handleAddRule = async (e) => {
+    e.preventDefault();
+    if (!newRuleReason || newRulePoints < 1) return;
+    setIsAddingRule(true);
+
+    const { data, error } = await supabase.from('point_rules').insert([{
+      type: newRuleType,
+      reason: newRuleReason,
+      points: parseInt(newRulePoints)
+    }]).select().single();
+
+    if (!error && data) {
+      setPointRules([...pointRules, data]);
+      setNewRuleReason('');
+      setNewRulePoints(1);
+    }
+    setIsAddingRule(false);
+  };
+
+  const handleDeleteRule = async (id) => {
+    if (!window.confirm("Delete this rule from the system? Teachers will no longer be able to select it.")) return;
+    await supabase.from('point_rules').delete().eq('id', id);
+    setPointRules(pointRules.filter(r => r.id !== id));
+  };
+
+  if (isLoading) return <div className="max-w-4xl mx-auto h-[60vh] flex items-center justify-center"><div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div></div>;
 
   if (!isAuthorized) {
     return (
@@ -98,25 +126,17 @@ export default function SystemSettings() {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-4 border-b border-slate-200">
         <div>
           <h2 className="text-2xl font-bold text-school-navy flex items-center gap-2">
-            <Settings className="w-6 h-6 text-indigo-500" />
-            System Configuration
+            <Settings className="w-6 h-6 text-indigo-500" /> System Configuration
           </h2>
           <p className="text-sm text-slate-500 font-medium mt-1">Manage global variables and operational rules for the entire portal.</p>
         </div>
-        <button 
-          onClick={handleSave}
-          disabled={isSaving}
-          className="bg-school-navy hover:bg-slate-800 text-white px-6 py-2.5 rounded-lg text-sm font-bold transition-all shadow-sm flex items-center gap-2 disabled:opacity-50"
-        >
-          <Save className="w-4 h-4" /> 
-          {isSaving ? 'Saving Changes...' : 'Save Configuration'}
+        <button onClick={handleSave} disabled={isSaving} className="bg-school-navy hover:bg-slate-800 text-white px-6 py-2.5 rounded-lg text-sm font-bold transition-all shadow-sm flex items-center gap-2 disabled:opacity-50">
+          <Save className="w-4 h-4" /> {isSaving ? 'Saving Changes...' : 'Save Configuration'}
         </button>
       </div>
 
       {statusMsg.text && (
-        <div className={`p-4 rounded-xl flex items-center gap-3 animate-in fade-in ${
-          statusMsg.type === 'success' ? 'bg-emerald-50 border border-emerald-200 text-emerald-800' : 'bg-red-50 border border-red-200 text-red-800'
-        }`}>
+        <div className={`p-4 rounded-xl flex items-center gap-3 animate-in fade-in ${statusMsg.type === 'success' ? 'bg-emerald-50 border border-emerald-200 text-emerald-800' : 'bg-red-50 border border-red-200 text-red-800'}`}>
           <Server className="w-5 h-5 flex-shrink-0" />
           <p className="text-sm font-bold">{statusMsg.text}</p>
         </div>
@@ -133,20 +153,11 @@ export default function SystemSettings() {
           <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="md:col-span-2">
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Platform Name</label>
-              <input 
-                type="text" 
-                value={schoolName}
-                onChange={(e) => setSchoolName(e.target.value)}
-                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500"
-              />
+              <input type="text" value={schoolName} onChange={(e) => setSchoolName(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500" />
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Active Academic Year</label>
-              <select 
-                value={academicYear}
-                onChange={(e) => setAcademicYear(e.target.value)}
-                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 cursor-pointer"
-              >
+              <select value={academicYear} onChange={(e) => setAcademicYear(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 cursor-pointer">
                 <option value="2025-2026">2025 - 2026</option>
                 <option value="2026-2027">2026 - 2027</option>
                 <option value="2027-2028">2027 - 2028</option>
@@ -154,11 +165,7 @@ export default function SystemSettings() {
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Current Term</label>
-              <select 
-                value={currentTerm}
-                onChange={(e) => setCurrentTerm(e.target.value)}
-                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 cursor-pointer"
-              >
+              <select value={currentTerm} onChange={(e) => setCurrentTerm(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 cursor-pointer">
                 <option value="Term 1">Term 1</option>
                 <option value="Term 2">Term 2</option>
                 <option value="Term 3">Term 3</option>
@@ -167,33 +174,67 @@ export default function SystemSettings() {
           </div>
         </div>
 
-        {/* Academic Rules */}
+        {/* Dynamic Point Rules Engine */}
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
           <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center gap-2">
-            <Server className="w-5 h-5 text-indigo-500" />
-            <h3 className="font-bold text-school-navy">Academic Logic & Rules</h3>
+            <Award className="w-5 h-5 text-indigo-500" />
+            <h3 className="font-bold text-school-navy">Gamification & Point Rules</h3>
           </div>
-          <div className="p-6">
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Grading System Split Threshold</label>
-            <p className="text-sm text-slate-500 mb-4">
-              Configure the class level where the evaluation methodology switches. Classes below this threshold will utilize letter grading, while this class and above will transition strictly to numeric marks.
-            </p>
-            <div className="flex items-center gap-4">
-              <span className="text-sm font-bold text-slate-600 bg-slate-100 px-4 py-2 rounded-lg border border-slate-200">Letter Grades (A-F)</span>
-              <div className="flex-1 max-w-[200px]">
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-indigo-500">Class</span>
-                  <input 
-                    type="number" 
-                    min="1"
-                    max="12"
-                    value={gradingThreshold}
-                    onChange={(e) => setGradingThreshold(e.target.value)}
-                    className="w-full pl-14 pr-4 py-3 bg-white border-2 border-indigo-200 rounded-lg text-sm font-bold text-school-navy focus:outline-none focus:border-indigo-500"
-                  />
-                </div>
+          
+          <div className="p-6 grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            {/* Left: Add Rule Form */}
+            <form onSubmit={handleAddRule} className="lg:col-span-1 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Rule Type</label>
+                <select value={newRuleType} onChange={(e) => setNewRuleType(e.target.value)} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold text-school-navy focus:outline-none focus:border-indigo-500">
+                  <option value="Tashjee">Tashjee (Positive)</option>
+                  <option value="Tanbeeh">Tanbeeh (Negative)</option>
+                </select>
               </div>
-              <span className="text-sm font-bold text-slate-600 bg-slate-100 px-4 py-2 rounded-lg border border-slate-200">Numeric Marks (0-100)</span>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Reason</label>
+                <input type="text" required value={newRuleReason} onChange={(e) => setNewRuleReason(e.target.value)} placeholder="e.g. Excellent adab" className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Points Awarded/Deducted</label>
+                <input type="number" min="1" required value={newRulePoints} onChange={(e) => setNewRulePoints(e.target.value)} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500" />
+              </div>
+              <button type="submit" disabled={isAddingRule} className="w-full bg-indigo-50 text-indigo-700 hover:bg-indigo-600 hover:text-white border border-indigo-200 py-2.5 rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2">
+                <PlusCircle className="w-4 h-4" /> {isAddingRule ? 'Adding...' : 'Add Rule'}
+              </button>
+            </form>
+
+            {/* Right: Active Rules Table */}
+            <div className="lg:col-span-2 border border-slate-200 rounded-xl overflow-hidden">
+              <table className="w-full text-left border-collapse">
+                <thead className="bg-slate-50 border-b border-slate-200">
+                  <tr>
+                    <th className="p-3 text-xs font-bold text-slate-500 uppercase">Type</th>
+                    <th className="p-3 text-xs font-bold text-slate-500 uppercase">Reason</th>
+                    <th className="p-3 text-xs font-bold text-slate-500 uppercase text-center">Pts</th>
+                    <th className="p-3 text-xs font-bold text-slate-500 uppercase text-right">Delete</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {pointRules.map(rule => (
+                    <tr key={rule.id} className="hover:bg-slate-50">
+                      <td className="p-3">
+                        <span className={`text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider ${rule.type === 'Tashjee' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                          {rule.type}
+                        </span>
+                      </td>
+                      <td className="p-3 text-sm font-bold text-school-navy">{rule.reason}</td>
+                      <td className="p-3 text-sm font-bold text-slate-700 text-center">{rule.points}</td>
+                      <td className="p-3 text-right">
+                        <button onClick={() => handleDeleteRule(rule.id)} className="text-slate-400 hover:text-red-500 transition-colors p-1">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
@@ -209,10 +250,7 @@ export default function SystemSettings() {
               <h4 className="font-bold text-school-navy text-lg">Maintenance Mode</h4>
               <p className="text-sm text-slate-500 mt-1">If activated, all non-admin users will be locked out of the portal until disabled.</p>
             </div>
-            <button 
-              onClick={() => setMaintenanceMode(!maintenanceMode)}
-              className={`p-2 rounded-full transition-colors ${maintenanceMode ? 'text-red-500' : 'text-slate-300 hover:text-slate-400'}`}
-            >
+            <button onClick={() => setMaintenanceMode(!maintenanceMode)} className={`p-2 rounded-full transition-colors ${maintenanceMode ? 'text-red-500' : 'text-slate-300 hover:text-slate-400'}`}>
               {maintenanceMode ? <ToggleRight className="w-12 h-12" /> : <ToggleLeft className="w-12 h-12" />}
             </button>
           </div>
