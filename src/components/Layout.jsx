@@ -1,18 +1,19 @@
 // src/components/Layout.jsx
 import React, { useState, useEffect } from 'react';
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
 import { 
   BookOpen, Users, Calendar, Settings, LogOut, HelpCircle, AlertTriangle, 
   CheckCircle2, Award, FileText, BookTemplate, BarChart2, Trophy, Search, 
   PhoneCall, History, ShieldCheck, Book, Shield, Briefcase , Database, Inbox,
-  LifeBuoy, Activity, GraduationCap, Key, Lock, Link, CalendarClock
+  LifeBuoy, Activity, GraduationCap, Key, Lock, Link, CalendarClock, Menu, X
 } from 'lucide-react';
 
 export default function Layout() {
   const [profile, setProfile] = useState({ name: 'Loading...', role: '' });
   const [showPasswordReset, setShowPasswordReset] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   // Password Reset State
   const [newPassword, setNewPassword] = useState('');
@@ -21,6 +22,7 @@ export default function Layout() {
   const [errorMsg, setErrorMsg] = useState('');
   
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     async function fetchUserProfile() {
@@ -44,6 +46,11 @@ export default function Layout() {
     }
     fetchUserProfile();
   }, []);
+
+  // Auto-close the mobile menu whenever the route changes
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [location.pathname]);
 
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
@@ -90,7 +97,7 @@ export default function Layout() {
   };
 
   const navLinkClass = ({isActive}) => 
-    `flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-sm font-medium ${
+    `flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors text-sm font-medium ${
       isActive ? 'bg-slate-800 text-school-yellow' : 'hover:bg-slate-800 hover:text-white'
     }`;
 
@@ -101,7 +108,7 @@ export default function Layout() {
   const isStaff = isTeacher || isAdmin;
 
   return (
-    <div className="flex h-screen w-screen bg-school-gray overflow-hidden relative">
+    <div className="flex flex-col md:flex-row h-screen w-screen bg-school-gray overflow-hidden relative">
       
       {/* --- PASSWORD RESET INTERCEPTOR MODAL --- */}
       {showPasswordReset && (
@@ -175,29 +182,46 @@ export default function Layout() {
         </div>
       )}
 
-      {/* 1. The Dark Navy Sidebar */}
-      <aside className="w-64 bg-school-navy flex flex-col justify-between text-slate-300 overflow-y-auto custom-scrollbar">
+      {/* --- MOBILE HEADER BAR --- */}
+      <div className="md:hidden bg-school-navy text-white px-4 py-3 flex items-center justify-between border-b border-slate-800 shrink-0 z-30">
+        <div className="flex items-center gap-2">
+          <BookOpen className="w-6 h-6 text-school-yellow" />
+          <h1 className="font-bold text-lg tracking-wider">Portal</h1>
+        </div>
+        <button 
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          className="p-2 text-slate-300 hover:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-600"
+        >
+          {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+        </button>
+      </div>
+
+      {/* --- THE SIDEBAR (Drawer on Mobile, Fixed on Desktop) --- */}
+      <aside className={`
+        fixed inset-y-0 left-0 z-40 w-72 md:w-64 bg-school-navy text-slate-300 flex flex-col justify-between border-r border-slate-800 transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:h-screen
+        ${isMobileMenuOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}
+      `}>
         
-        <div>
-          <div className="p-6 border-b border-slate-700 sticky top-0 bg-school-navy z-10">
+        <div className="flex flex-col flex-1 overflow-hidden">
+          <div className="p-6 border-b border-slate-700 bg-school-navy hidden md:block shrink-0">
             <h1 className="text-2xl font-bold text-school-yellow flex items-center gap-2">
               <BookOpen className="w-6 h-6" />
               Portal
             </h1>
           </div>
           
-          <nav className="p-4 space-y-6">
+          <nav className="p-4 space-y-6 overflow-y-auto flex-1 custom-scrollbar">
             
             {isParent && (
-  <div>
-    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Parent Portal</p>
-    <div className="space-y-1">
-      <NavLink to="/" className={navLinkClass}><Users className="w-4 h-4" /> My Student</NavLink>
-      <NavLink to="/calendar" className={navLinkClass}><Calendar className="w-4 h-4" /> Academic Calendar</NavLink>
-      <NavLink to="/request-leave" className={navLinkClass}><CalendarClock className="w-4 h-4" /> Request Leave</NavLink>
-    </div>
-  </div>
-)}
+              <div>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Parent Portal</p>
+                <div className="space-y-1">
+                  <NavLink to="/" className={navLinkClass}><Users className="w-4 h-4" /> My Student</NavLink>
+                  <NavLink to="/calendar" className={navLinkClass}><Calendar className="w-4 h-4" /> Academic Calendar</NavLink>
+                  <NavLink to="/request-leave" className={navLinkClass}><CalendarClock className="w-4 h-4" /> Request Leave</NavLink>
+                </div>
+              </div>
+            )}
 
             {/* STAFF SPECIFIC LINKS */}
             {isStaff && (
@@ -283,13 +307,13 @@ export default function Layout() {
         </div>
 
         {/* Bottom Section */}
-        <div className="p-4 border-t border-slate-700 bg-school-navy sticky bottom-0">
+        <div className="p-4 border-t border-slate-700 bg-school-navy shrink-0">
           <div className="flex items-center gap-3 mb-4 px-2">
-            <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-white font-bold">
+            <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-white font-bold shrink-0">
               {profile.name !== 'Loading...' ? profile.name.charAt(0).toUpperCase() : '?'}
             </div>
-            <div>
-              <p className="text-sm font-medium text-white line-clamp-1">{profile.name}</p>
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-white truncate">{profile.name}</p>
               <p className="text-[10px] uppercase tracking-wider text-slate-400">
                 {profile.role ? profile.role.replace('_', ' ') : 'Loading...'}
               </p>
@@ -304,9 +328,20 @@ export default function Layout() {
         </div>
       </aside>
 
-      <main className="flex-1 relative overflow-y-auto p-8">
+      {/* --- MOBILE OVERLAY BACKDROP --- */}
+      {isMobileMenuOpen && (
+        <div 
+          onClick={() => setIsMobileMenuOpen(false)}
+          className="fixed inset-0 bg-black/60 z-30 md:hidden backdrop-blur-sm transition-opacity"
+        />
+      )}
+
+      {/* --- MAIN CONTENT AREA --- */}
+      <main className="flex-1 relative overflow-y-auto p-4 md:p-8 bg-slate-50">
         <Outlet />
-        <div className="fixed bottom-6 right-6 flex flex-col gap-3">
+        
+        {/* Floating Action Buttons */}
+        <div className="fixed bottom-6 right-6 flex flex-col gap-3 z-20">
           <button className="bg-white p-3 rounded-full shadow-lg text-school-navy hover:bg-slate-50 transition-colors border border-slate-200 cursor-pointer">
             <AlertTriangle className="w-5 h-5" />
           </button>
@@ -315,6 +350,7 @@ export default function Layout() {
           </button>
         </div>
       </main>
+      
     </div>
   );
 }
