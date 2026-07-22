@@ -1,5 +1,6 @@
+// src/pages/ParentOnboarding.jsx
 import React, { useState } from 'react';
-import { Users, UploadCloud, ShieldAlert, CheckCircle2, AlertTriangle, Link, UserPlus, FileText } from 'lucide-react';
+import { Users, UploadCloud, ShieldAlert, CheckCircle2, AlertTriangle, Link, UserPlus, FileText, Mail, Phone } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 
 export default function ParentOnboarding() {
@@ -14,7 +15,9 @@ export default function ParentOnboarding() {
     studentIts: '',
     fatherName: '',
     motherName: '',
-    parentIts: ''
+    parentIts: '',
+    parentEmail: '',
+    parentPhone: ''
   });
 
   const getAdminClient = () => {
@@ -26,7 +29,7 @@ export default function ParentOnboarding() {
   };
 
   // Helper to fetch an existing parent or create a new one
-  const getOrCreateParent = async (supabaseAdmin, parentIts, fatherName) => {
+  const getOrCreateParent = async (supabaseAdmin, parentIts, fatherName, parentEmail, parentPhone) => {
     // 1. Check if Parent already exists in profiles (Sibling scenario)
     const { data: existingProfile } = await supabaseAdmin
       .from('profiles')
@@ -34,12 +37,22 @@ export default function ParentOnboarding() {
       .eq('its_number', parentIts)
       .single();
 
-    if (existingProfile) return existingProfile.id;
+    if (existingProfile) {
+      // If they exist, update their contact info to ensure it's fresh
+      const updatePayload = {};
+      if (parentEmail) updatePayload.email = parentEmail;
+      if (parentPhone) updatePayload.phone_number = parentPhone;
+      
+      if (Object.keys(updatePayload).length > 0) {
+        await supabaseAdmin.from('profiles').update(updatePayload).eq('id', existingProfile.id);
+      }
+      return existingProfile.id;
+    }
 
     // 2. If not, provision new Auth Account
-    const proxyEmail = `${parentIts}@msb.local`;
+    const authEmail = parentEmail || `${parentIts}@msb.local`;
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email: proxyEmail,
+      email: authEmail,
       password: '786110', // Default parent password
       email_confirm: true
     });
@@ -57,6 +70,8 @@ export default function ParentOnboarding() {
         full_name: `${fatherName} (Parent)`,
         role: 'PARENT',
         its_number: parentIts,
+        email: parentEmail || null,
+        phone_number: parentPhone || null,
         requires_password_change: true
       });
       return targetUserId;
@@ -83,7 +98,13 @@ export default function ParentOnboarding() {
       if (!student) throw new Error(`Student with ITS ${formData.studentIts} not found in database.`);
 
       // 2. Get or Create the Parent Account
-      const parentId = await getOrCreateParent(supabaseAdmin, formData.parentIts, formData.fatherName);
+      const parentId = await getOrCreateParent(
+        supabaseAdmin, 
+        formData.parentIts, 
+        formData.fatherName, 
+        formData.parentEmail, 
+        formData.parentPhone
+      );
       if (!parentId) throw new Error("Failed to resolve Parent Account.");
 
       // 3. Link them together
@@ -100,7 +121,7 @@ export default function ParentOnboarding() {
       if (updateError) throw updateError;
 
       setStatus({ type: 'success', msg: `Successfully linked Parent (${formData.parentIts}) to Student (${formData.studentIts}).` });
-      setFormData({ studentIts: '', fatherName: '', motherName: '', parentIts: '' });
+      setFormData({ studentIts: '', fatherName: '', motherName: '', parentIts: '', parentEmail: '', parentPhone: '' });
 
     } catch (err) {
       console.error(err);
@@ -162,7 +183,13 @@ export default function ParentOnboarding() {
           if (!row.student_its || !row.parent_its) continue;
 
           // Provision/Fetch Parent
-          const parentId = await getOrCreateParent(supabaseAdmin, row.parent_its, row.father_name);
+          const parentId = await getOrCreateParent(
+            supabaseAdmin, 
+            row.parent_its, 
+            row.father_name,
+            row.parent_email,
+            row.parent_phone
+          );
           
           if (parentId) {
             // Update Student
@@ -288,8 +315,31 @@ export default function ParentOnboarding() {
                 value={formData.parentIts}
                 onChange={(e) => setFormData({...formData, parentIts: e.target.value})}
                 placeholder="e.g. 40233033"
-                className="w-full p-3 border border-indigo-200 bg-indigo-50 rounded-lg focus:outline-none focus:border-indigo-500 text-sm font-bold text-school-navy"
+                className="w-full p-3 border border-indigo-200 bg-indigo-50 rounded-lg focus:outline-none focus:border-indigo-500 text-sm font-bold text-school-navy mb-4"
               />
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1"><Mail className="w-3.5 h-3.5"/> Email Address</label>
+                  <input 
+                    type="email" 
+                    value={formData.parentEmail}
+                    onChange={(e) => setFormData({...formData, parentEmail: e.target.value})}
+                    placeholder="parent@example.com"
+                    className="w-full p-3 border border-slate-300 rounded-lg focus:outline-none focus:border-indigo-500 text-sm font-bold text-school-navy"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1"><Phone className="w-3.5 h-3.5"/> Phone Number</label>
+                  <input 
+                    type="text" 
+                    value={formData.parentPhone}
+                    onChange={(e) => setFormData({...formData, parentPhone: e.target.value})}
+                    placeholder="+91 9876543210"
+                    className="w-full p-3 border border-slate-300 rounded-lg focus:outline-none focus:border-indigo-500 text-sm font-bold text-school-navy"
+                  />
+                </div>
+              </div>
             </div>
 
             <button 
@@ -312,10 +362,10 @@ export default function ParentOnboarding() {
               <h4 className="font-bold flex items-center gap-2 mb-2">
                 <ShieldAlert className="w-4 h-4" /> Required CSV Headers
               </h4>
-              <p className="font-mono bg-white p-2 rounded border border-indigo-200 text-xs">
-                student_its, parent_its, father_name, mother_name
+              <p className="font-mono bg-white p-2 rounded border border-indigo-200 text-xs break-all">
+                student_its, parent_its, father_name, mother_name, parent_email, parent_phone
               </p>
-              <p className="mt-2 text-xs opacity-80">* If multiple siblings share the same parent_its, the system will automatically group them to a single family account.</p>
+              <p className="mt-2 text-xs opacity-80">* If multiple siblings share the same parent_its, the system will automatically group them to a single family account and update their contact info.</p>
             </div>
 
             <div className="border-2 border-dashed border-slate-300 rounded-xl p-10 text-center hover:bg-slate-50 transition-colors relative">
