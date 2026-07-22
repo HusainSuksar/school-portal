@@ -29,13 +29,15 @@ export default function ParentOnboarding() {
   };
 
   // Helper to fetch an existing parent or create a new one
+  // Helper to fetch an existing parent or create a new one
   const getOrCreateParent = async (supabaseAdmin, parentIts, fatherName, parentEmail, parentPhone) => {
     // 1. Check if Parent already exists in profiles (Sibling scenario)
+    // Using .maybeSingle() instead of .single() prevents the 406 Not Acceptable error
     const { data: existingProfile } = await supabaseAdmin
       .from('profiles')
       .select('id')
       .eq('its_number', parentIts)
-      .single();
+      .maybeSingle();
 
     if (existingProfile) {
       // If they exist, update their contact info to ensure it's fresh
@@ -65,7 +67,7 @@ export default function ParentOnboarding() {
     
     // 3. Inject Profile
     if (targetUserId) {
-      await supabaseAdmin.from('profiles').upsert({
+      const { error: upsertError } = await supabaseAdmin.from('profiles').upsert({
         id: targetUserId,
         full_name: `${fatherName} (Parent)`,
         role: 'PARENT',
@@ -74,6 +76,8 @@ export default function ParentOnboarding() {
         phone_number: parentPhone || null,
         requires_password_change: true
       });
+      
+      if (upsertError) throw upsertError;
       return targetUserId;
     }
     
