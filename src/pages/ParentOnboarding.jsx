@@ -30,19 +30,24 @@ export default function ParentOnboarding() {
 
   // Helper to fetch an existing parent or create a new one
   // Helper to fetch an existing parent or create a new one
+  // Helper to fetch an existing parent or create a new one (Bulletproof Version)
   const getOrCreateParent = async (supabaseAdmin, parentIts, fatherName, parentEmail, parentPhone) => {
+    
     // 1. Check if Parent already exists in profiles (Sibling scenario)
-    // Using .maybeSingle() instead of .single() prevents the 406 Not Acceptable error
     const { data: existingProfile } = await supabaseAdmin
       .from('profiles')
       .select('id')
       .eq('its_number', parentIts)
       .maybeSingle();
 
+    // Basic email validation regex to catch obvious bad data from CSV
+    const isValidEmail = (email) => email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    let safeEmail = isValidEmail(parentEmail) ? parentEmail : `${parentIts}@msb.local`;
+
     if (existingProfile) {
-      // If they exist, update their contact info to ensure it's fresh
+      // If they exist, update their contact info (only if valid)
       const updatePayload = {};
-      if (parentEmail) updatePayload.email = parentEmail;
+      if (isValidEmail(parentEmail)) updatePayload.email = parentEmail;
       if (parentPhone) updatePayload.phone_number = parentPhone;
       
       if (Object.keys(updatePayload).length > 0) {
@@ -52,18 +57,34 @@ export default function ParentOnboarding() {
     }
 
     // 2. If not, provision new Auth Account
-    const authEmail = parentEmail || `${parentIts}@msb.local`;
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email: authEmail,
+    let authData;
+    const { data: initialAuthData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      email: safeEmail,
       password: '786110', // Default parent password
       email_confirm: true
     });
 
-    if (authError && !authError.message.includes('already exists')) {
-      throw authError;
+    if (authError) {
+      // SAFETY NET: If the CSV email was already taken by someone else, or still invalid, 
+      // catch the error and force-fallback to the proxy email so the import doesn't crash!
+      if (authError.message.includes('already been registered') || authError.message.includes('invalid format')) {
+        const { data: fallbackData, error: fallbackError } = await supabaseAdmin.auth.admin.createUser({
+          email: `${parentIts}@msb.local`,
+          password: '786110',
+          email_confirm: true
+        });
+        
+        if (fallbackError) throw fallbackError;
+        authData = fallbackData;
+        safeEmail = null; // Do not save the bad CSV email to their profile
+      } else {
+        throw authError; // If it's a completely different system error, throw it
+      }
+    } else {
+      authData = initialAuthData;
     }
 
-    const targetUserId = authData?.user?.id; // If created successfully
+    const targetUserId = authData?.user?.id; 
     
     // 3. Inject Profile
     if (targetUserId) {
@@ -72,7 +93,7 @@ export default function ParentOnboarding() {
         full_name: `${fatherName} (Parent)`,
         role: 'PARENT',
         its_number: parentIts,
-        email: parentEmail || null,
+        email: safeEmail !== `${parentIts}@msb.local` ? safeEmail : null,
         phone_number: parentPhone || null,
         requires_password_change: true
       });
