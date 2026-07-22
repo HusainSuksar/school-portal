@@ -31,74 +31,58 @@ export default function ParentOnboarding() {
   // Helper to fetch an existing parent or create a new one
   // Helper to fetch an existing parent or create a new one
   // Helper to fetch an existing parent or create a new one (Bulletproof Version)
+  // Helper to fetch an existing parent or create a new one safely
   const getOrCreateParent = async (supabaseAdmin, parentIts, fatherName, parentEmail, parentPhone) => {
-    
-    // 1. Check if Parent already exists in profiles (Sibling scenario)
+    // 1. Check if Parent already exists in profiles
     const { data: existingProfile } = await supabaseAdmin
       .from('profiles')
       .select('id')
       .eq('its_number', parentIts)
       .maybeSingle();
 
-    // Basic email validation regex to catch obvious bad data from CSV
-    const isValidEmail = (email) => email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-    let safeEmail = isValidEmail(parentEmail) ? parentEmail : `${parentIts}@msb.local`;
-
     if (existingProfile) {
-      // If they exist, update their contact info (only if valid)
-      const updatePayload = {};
-      if (isValidEmail(parentEmail)) updatePayload.email = parentEmail;
-      if (parentPhone) updatePayload.phone_number = parentPhone;
-      
-      if (Object.keys(updatePayload).length > 0) {
-        await supabaseAdmin.from('profiles').update(updatePayload).eq('id', existingProfile.id);
-      }
       return existingProfile.id;
     }
 
-    // 2. If not, provision new Auth Account
-    let authData;
-    const { data: initialAuthData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email: safeEmail,
+    // 2. Provision new Auth Account using safe proxy email format
+    const proxyEmail = `${parentIts}@msb.local`;
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      email: proxyEmail,
       password: '786110', // Default parent password
       email_confirm: true
     });
 
-    if (authError) {
-      // SAFETY NET: If the CSV email was already taken by someone else, or still invalid, 
-      // catch the error and force-fallback to the proxy email so the import doesn't crash!
-      if (authError.message.includes('already been registered') || authError.message.includes('invalid format')) {
-        const { data: fallbackData, error: fallbackError } = await supabaseAdmin.auth.admin.createUser({
-          email: `${parentIts}@msb.local`,
-          password: '786110',
-          email_confirm: true
-        });
-        
-        if (fallbackError) throw fallbackError;
-        authData = fallbackData;
-        safeEmail = null; // Do not save the bad CSV email to their profile
-      } else {
-        throw authError; // If it's a completely different system error, throw it
-      }
-    } else {
-      authData = initialAuthData;
+    // If the user already exists in auth, find their UID from profiles or list users
+    if (authError && !authError.message.includes('already exists')) {
+      throw authError;
     }
 
-    const targetUserId = authData?.user?.id; 
+    let targetUserId = authData?.user?.id;
+
+    if (!targetUserId) {
+      // Fallback lookup if auth user already existed
+      const { data: fallbackUser } = await supabaseAdmin
+        .from('profiles')
+        .select('id')
+        .eq('its_number', parentIts)
+        .maybeSingle();
+      if (fallbackUser) return fallbackUser.id;
+      return null;
+    }
     
-    // 3. Inject Profile
+    // 3. Inject Profile (Mapping basic required attributes)
     if (targetUserId) {
       const { error: upsertError } = await supabaseAdmin.from('profiles').upsert({
         id: targetUserId,
-        full_name: `${fatherName} (Parent)`,
+        full_name: `${fatherName || 'Parent'} (Parent)`,
         role: 'PARENT',
         its_number: parentIts,
-        email: safeEmail !== `${parentIts}@msb.local` ? safeEmail : null,
-        phone_number: parentPhone || null,
         requires_password_change: true
       });
       
-      if (upsertError) throw upsertError;
+      if (upsertError) {
+        console.warn("Profile upsert warning:", upsertError.message);
+      }
       return targetUserId;
     }
     
