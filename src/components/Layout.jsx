@@ -2,13 +2,13 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import InstallAppButton from '../components/InstallAppButton';
+import InstallAppButton from './InstallAppButton';
 
 import { 
   BookOpen, Users, Calendar, Settings, LogOut, HelpCircle, AlertTriangle, 
   CheckCircle2, Award, FileText, BookTemplate, BarChart2, Trophy, Search, 
   PhoneCall, History, ShieldCheck, Book, Shield, Briefcase , Database, Inbox,
-  LifeBuoy, Activity, GraduationCap, Key, Lock, Link, CalendarClock, Menu, X
+  LifeBuoy, Activity, GraduationCap, Key, Lock, Link, CalendarClock, Menu, X, User
 } from 'lucide-react';
 
 export default function Layout() {
@@ -48,7 +48,6 @@ export default function Layout() {
     fetchUserProfile();
   }, []);
 
-  // Auto-close the mobile menu whenever the route changes
   useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [location.pathname]);
@@ -102,7 +101,6 @@ export default function Layout() {
       isActive ? 'bg-slate-800 text-school-yellow' : 'hover:bg-slate-800 hover:text-white'
     }`;
 
-  // Role Checks
   const isParent = profile.role === 'PARENT';
   const isTeacher = profile.role === 'TEACHER' || profile.role === 'CLASS_TR';
   const isAdmin = profile.role === 'ADMIN' || profile.role === 'HOS';
@@ -197,7 +195,7 @@ export default function Layout() {
         </button>
       </div>
 
-      {/* --- THE SIDEBAR (Drawer on Mobile, Fixed on Desktop) --- */}
+      {/* --- THE SIDEBAR --- */}
       <aside className={`
         fixed inset-y-0 left-0 z-40 w-72 md:w-64 bg-school-navy text-slate-300 flex flex-col justify-between border-r border-slate-800 transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:h-screen
         ${isMobileMenuOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}
@@ -320,7 +318,7 @@ export default function Layout() {
               </p>
             </div>
           </div>
-          <NavLink to="/profile" className={navLinkClass}><Link className="w-4 h-4" /> Profile </NavLink>
+          <NavLink to="/profile" className={navLinkClass}><User className="w-4 h-4" /> My Profile </NavLink>
           <button onClick={handleLogout} className="flex w-full items-center gap-3 px-3 py-2 text-red-400 rounded-md hover:bg-slate-800 transition-colors text-sm mt-1">
             <LogOut className="w-4 h-4" /> Logout
           </button>
