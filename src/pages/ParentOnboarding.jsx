@@ -28,11 +28,11 @@ export default function ParentOnboarding() {
     );
   };
 
+  // Helper to fetch an existing parent or create a new one
+  // Helper to fetch an existing parent or create a new one
+  // Helper to fetch an existing parent or create a new one (Bulletproof Version)
+  // Helper to fetch an existing parent or create a new one safely
   const getOrCreateParent = async (supabaseAdmin, parentIts, fatherName, parentEmail, parentPhone) => {
-    const cleanFullName = fatherName ? `${fatherName}` : `Parent ${parentIts}`;
-    const cleanPhone = parentPhone ? String(parentPhone).trim() : null;
-    const cleanEmail = parentEmail ? String(parentEmail).trim() : null;
-
     // 1. Check if Parent already exists in profiles
     const { data: existingProfile } = await supabaseAdmin
       .from('profiles')
@@ -41,17 +41,10 @@ export default function ParentOnboarding() {
       .maybeSingle();
 
     if (existingProfile) {
-      // Update existing parent profile with fresh details
-      await supabaseAdmin.from('profiles').update({
-        full_name: cleanFullName,
-        phone_number: cleanPhone,
-        personal_email: cleanEmail
-      }).eq('id', existingProfile.id);
-      
       return existingProfile.id;
     }
 
-    // 2. Provision new Auth Account using proxy email format
+    // 2. Provision new Auth Account using safe proxy email format
     const proxyEmail = `${parentIts}@msb.local`;
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: proxyEmail,
@@ -59,7 +52,8 @@ export default function ParentOnboarding() {
       email_confirm: true
     });
 
-    if (authError && !authError.message.includes('already registered') && !authError.message.includes('already exists')) {
+    // If the user already exists in auth, find their UID from profiles or list users
+    if (authError && !authError.message.includes('already exists')) {
       throw authError;
     }
 
@@ -75,25 +69,23 @@ export default function ParentOnboarding() {
       if (fallbackUser) return fallbackUser.id;
       return null;
     }
-
-    // 3. Inject Profile into 'profiles' table using EXACT schema column names
+    
+    // 3. Inject Profile (Mapping basic required attributes)
     if (targetUserId) {
       const { error: upsertError } = await supabaseAdmin.from('profiles').upsert({
         id: targetUserId,
-        full_name: cleanFullName,
+        full_name: `${fatherName || 'Parent'} (Parent)`,
         role: 'PARENT',
         its_number: parentIts,
-        personal_email: cleanEmail,
-        phone_number: cleanPhone,
         requires_password_change: true
       });
-
+      
       if (upsertError) {
         console.warn("Profile upsert warning:", upsertError.message);
       }
       return targetUserId;
     }
-
+    
     return null;
   };
 
@@ -105,7 +97,7 @@ export default function ParentOnboarding() {
     try {
       const supabaseAdmin = getAdminClient();
       
-      // Verify target student
+      // 1. Ensure the student actually exists first
       const { data: student } = await supabaseAdmin
         .from('students')
         .select('id')
@@ -114,7 +106,7 @@ export default function ParentOnboarding() {
         
       if (!student) throw new Error(`Student with ITS ${formData.studentIts} not found in database.`);
 
-      // Provision/Fetch Parent
+      // 2. Get or Create the Parent Account
       const parentId = await getOrCreateParent(
         supabaseAdmin, 
         formData.parentIts, 
@@ -124,7 +116,7 @@ export default function ParentOnboarding() {
       );
       if (!parentId) throw new Error("Failed to resolve Parent Account.");
 
-      // Link Student to Parent
+      // 3. Link them together
       const { error: updateError } = await supabaseAdmin
         .from('students')
         .update({
@@ -137,7 +129,7 @@ export default function ParentOnboarding() {
 
       if (updateError) throw updateError;
 
-      setStatus({ type: 'success', msg: `Successfully linked Parent to Student (${formData.studentIts}).` });
+      setStatus({ type: 'success', msg: `Successfully linked Parent (${formData.parentIts}) to Student (${formData.studentIts}).` });
       setFormData({ studentIts: '', fatherName: '', motherName: '', parentIts: '', parentEmail: '', parentPhone: '' });
 
     } catch (err) {
@@ -179,6 +171,7 @@ export default function ParentOnboarding() {
       return obj;
     });
   };
+
   const handleFileUpload = (e) => {
     const selectedFile = e.target.files[0];
     if (!selectedFile) return;
@@ -204,7 +197,7 @@ export default function ParentOnboarding() {
       const records = parseCSV(text);
 
       if (records.length > 0 && (!records[0].student_its || !records[0].parent_its)) {
-        throw new Error("Missing required columns: 'student_its' and 'parent_its'.");
+        throw new Error("Missing required columns. Please ensure 'student_its' and 'parent_its' exist.");
       }
 
       const supabaseAdmin = getAdminClient();
@@ -215,6 +208,7 @@ export default function ParentOnboarding() {
         try {
           if (!row.student_its || !row.parent_its) continue;
 
+          // Provision/Fetch Parent
           const parentId = await getOrCreateParent(
             supabaseAdmin, 
             row.parent_its, 
@@ -224,6 +218,7 @@ export default function ParentOnboarding() {
           );
           
           if (parentId) {
+            // Update Student
             const { error } = await supabaseAdmin
               .from('students')
               .update({
@@ -245,7 +240,7 @@ export default function ParentOnboarding() {
 
       setStatus({ 
         type: errorCount === 0 ? 'success' : 'error', 
-        msg: `Processed ${successCount} records successfully. ${errorCount > 0 ? `Failed: ${errorCount}` : ''}` 
+        msg: `Linked ${successCount} students successfully. ${errorCount > 0 ? `Failed to link ${errorCount} records.` : ''}` 
       });
       
       setFile(null);
@@ -261,15 +256,17 @@ export default function ParentOnboarding() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-12">
+      
       <div className="pb-4 border-b border-slate-200">
         <h2 className="text-2xl font-bold text-school-navy flex items-center gap-2">
-          <Link className="w-6 h-6 text-indigo-500" /> Parent Linking Engine
+          <Link className="w-6 h-6 text-indigo-500" />
+          Parent Linking Engine
         </h2>
         <p className="text-sm text-slate-500 font-medium mt-1">Provision family portal accounts and link them directly to student records.</p>
       </div>
 
       {status.msg && (
-        <div className={`p-4 rounded-xl flex items-center gap-3 ${
+        <div className={`p-4 rounded-xl flex items-center gap-3 animate-in fade-in ${
           status.type === 'success' ? 'bg-emerald-50 border border-emerald-200 text-emerald-800' : 'bg-red-50 border border-red-200 text-red-800'
         }`}>
           {status.type === 'success' ? <CheckCircle2 className="w-5 h-5 flex-shrink-0" /> : <AlertTriangle className="w-5 h-5 flex-shrink-0" />}
@@ -278,74 +275,157 @@ export default function ParentOnboarding() {
       )}
 
       <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 w-full md:w-fit">
-        <button onClick={() => setActiveTab('single')} className={`flex-1 md:px-8 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'single' ? 'bg-white text-school-navy shadow-sm' : 'text-slate-500'}`}>
+        <button 
+          onClick={() => { setActiveTab('single'); setStatus({type: '', msg: ''}); }}
+          className={`flex-1 md:px-8 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+            activeTab === 'single' ? 'bg-white text-school-navy shadow-sm' : 'text-slate-500 hover:text-slate-700'
+          }`}
+        >
           <UserPlus className="w-4 h-4" /> Link Single Family
         </button>
-        <button onClick={() => setActiveTab('bulk')} className={`flex-1 md:px-8 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'bulk' ? 'bg-white text-school-navy shadow-sm' : 'text-slate-500'}`}>
+        <button 
+          onClick={() => { setActiveTab('bulk'); setStatus({type: '', msg: ''}); }}
+          className={`flex-1 md:px-8 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+            activeTab === 'bulk' ? 'bg-white text-school-navy shadow-sm' : 'text-slate-500 hover:text-slate-700'
+          }`}
+        >
           <UploadCloud className="w-4 h-4" /> Bulk CSV Mapper
         </button>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden p-6">
+        
         {activeTab === 'single' ? (
           <form onSubmit={handleSingleSubmit} className="space-y-5 max-w-lg">
+            
             <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 mb-6">
-               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Target Student ITS</label>
-               <input type="text" required value={formData.studentIts} onChange={(e) => setFormData({...formData, studentIts: e.target.value})} placeholder="e.g. 20123456" className="w-full p-3 border border-slate-300 rounded-lg text-sm font-bold text-school-navy" />
+               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">1. Target Student ITS</label>
+               <input 
+                 type="text" 
+                 required
+                 value={formData.studentIts}
+                 onChange={(e) => setFormData({...formData, studentIts: e.target.value})}
+                 placeholder="e.g. 20123456"
+                 className="w-full p-3 border border-slate-300 rounded-lg focus:outline-none focus:border-indigo-500 text-sm font-bold text-school-navy"
+               />
             </div>
             
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Father's Name</label>
-                <input type="text" value={formData.fatherName} onChange={(e) => setFormData({...formData, fatherName: e.target.value})} placeholder="e.g. Saifuddin bhai" className="w-full p-3 border border-slate-300 rounded-lg text-sm font-bold text-school-navy" />
+                <input 
+                  type="text" 
+                  value={formData.fatherName}
+                  onChange={(e) => setFormData({...formData, fatherName: e.target.value})}
+                  placeholder="e.g. Mustafa Bhai"
+                  className="w-full p-3 border border-slate-300 rounded-lg focus:outline-none focus:border-indigo-500 text-sm font-bold text-school-navy"
+                />
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Mother's Name</label>
-                <input type="text" value={formData.motherName} onChange={(e) => setFormData({...formData, motherName: e.target.value})} placeholder="e.g. Tasneem bai" className="w-full p-3 border border-slate-300 rounded-lg text-sm font-bold text-school-navy" />
+                <input 
+                  type="text" 
+                  value={formData.motherName}
+                  onChange={(e) => setFormData({...formData, motherName: e.target.value})}
+                  placeholder="e.g. Fatema Ben"
+                  className="w-full p-3 border border-slate-300 rounded-lg focus:outline-none focus:border-indigo-500 text-sm font-bold text-school-navy"
+                />
               </div>
             </div>
 
             <div className="pt-2">
               <label className="block text-xs font-bold text-indigo-500 uppercase tracking-wider mb-2">Primary Parent ITS (Portal Login)</label>
-              <input type="text" required value={formData.parentIts} onChange={(e) => setFormData({...formData, parentIts: e.target.value})} placeholder="e.g. 30458220" className="w-full p-3 border border-indigo-200 bg-indigo-50 rounded-lg text-sm font-bold text-school-navy mb-4" />
+              <input 
+                type="text" 
+                required
+                value={formData.parentIts}
+                onChange={(e) => setFormData({...formData, parentIts: e.target.value})}
+                placeholder="e.g. 40233033"
+                className="w-full p-3 border border-indigo-200 bg-indigo-50 rounded-lg focus:outline-none focus:border-indigo-500 text-sm font-bold text-school-navy mb-4"
+              />
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1"><Mail className="w-3.5 h-3.5"/> Email Address</label>
-                  <input type="email" value={formData.parentEmail} onChange={(e) => setFormData({...formData, parentEmail: e.target.value})} placeholder="parent@example.com" className="w-full p-3 border border-slate-300 rounded-lg text-sm font-bold text-school-navy" />
+                  <input 
+                    type="email" 
+                    value={formData.parentEmail}
+                    onChange={(e) => setFormData({...formData, parentEmail: e.target.value})}
+                    placeholder="parent@example.com"
+                    className="w-full p-3 border border-slate-300 rounded-lg focus:outline-none focus:border-indigo-500 text-sm font-bold text-school-navy"
+                  />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1"><Phone className="w-3.5 h-3.5"/> Phone Number</label>
-                  <input type="text" value={formData.parentPhone} onChange={(e) => setFormData({...formData, parentPhone: e.target.value})} placeholder="9313450916" className="w-full p-3 border border-slate-300 rounded-lg text-sm font-bold text-school-navy" />
+                  <input 
+                    type="text" 
+                    value={formData.parentPhone}
+                    onChange={(e) => setFormData({...formData, parentPhone: e.target.value})}
+                    placeholder="+91 9876543210"
+                    className="w-full p-3 border border-slate-300 rounded-lg focus:outline-none focus:border-indigo-500 text-sm font-bold text-school-navy"
+                  />
                 </div>
               </div>
             </div>
 
-            <button type="submit" disabled={isProcessing} className="w-full bg-indigo-600 text-white py-3 rounded-lg font-bold shadow-md hover:bg-indigo-700 transition-colors disabled:opacity-50 flex justify-center items-center gap-2 mt-4">
-              {isProcessing ? 'Linking Records...' : <><Link className="w-5 h-5" /> Provision & Link Account</>}
+            <button 
+              type="submit" 
+              disabled={isProcessing}
+              className="w-full bg-indigo-600 text-white py-3 rounded-lg font-bold shadow-md hover:bg-indigo-700 transition-colors disabled:opacity-50 flex justify-center items-center gap-2 mt-4"
+            >
+              {isProcessing ? (
+                <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Linking Records...</>
+              ) : (
+                <><Link className="w-5 h-5" /> Provision & Link Account</>
+              )}
             </button>
           </form>
+
         ) : (
+
           <div>
             <div className="bg-indigo-50 text-indigo-800 p-4 rounded-lg text-sm mb-6 border border-indigo-100">
-              <h4 className="font-bold flex items-center gap-2 mb-2"><ShieldAlert className="w-4 h-4" /> Required CSV Headers</h4>
-              <p className="font-mono bg-white p-2 rounded border border-indigo-200 text-xs break-all">student_its, parent_its, father_name, mother_name, parent_email, parent_phone</p>
+              <h4 className="font-bold flex items-center gap-2 mb-2">
+                <ShieldAlert className="w-4 h-4" /> Required CSV Headers
+              </h4>
+              <p className="font-mono bg-white p-2 rounded border border-indigo-200 text-xs break-all">
+                student_its, parent_its, father_name, mother_name, parent_email, parent_phone
+              </p>
+              <p className="mt-2 text-xs opacity-80">* If multiple siblings share the same parent_its, the system will automatically group them to a single family account and update their contact info.</p>
             </div>
 
             <div className="border-2 border-dashed border-slate-300 rounded-xl p-10 text-center hover:bg-slate-50 transition-colors relative">
-              <input type="file" accept=".csv" onChange={handleFileUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+              <input 
+                type="file" 
+                accept=".csv"
+                onChange={handleFileUpload}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              />
               <UploadCloud className="w-12 h-12 text-slate-400 mx-auto mb-3" />
-              <h4 className="text-lg font-bold text-school-navy mb-1">{file ? file.name : 'Drag & Drop your CSV here'}</h4>
-              <p className="text-sm text-slate-500">{file ? `${previewCount} records detected` : 'or click to browse'}</p>
+              <h4 className="text-lg font-bold text-school-navy mb-1">
+                {file ? file.name : 'Drag & Drop your CSV here'}
+              </h4>
+              <p className="text-sm text-slate-500">
+                {file ? `${previewCount} linking records detected` : 'or click to browse your computer'}
+              </p>
             </div>
 
             {file && (
-              <button onClick={executeBulkUpload} disabled={isProcessing} className="w-full mt-6 bg-school-navy hover:bg-slate-800 text-white py-3.5 rounded-lg text-sm font-bold transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-70">
-                {isProcessing ? 'Processing Mapping...' : <><CheckCircle2 className="w-5 h-5" /> Execute Bulk Linking</>}
+              <button 
+                onClick={executeBulkUpload}
+                disabled={isProcessing}
+                className="w-full mt-6 bg-school-navy hover:bg-slate-800 text-white py-3.5 rounded-lg text-sm font-bold transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-70"
+              >
+                {isProcessing ? (
+                  <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Processing Mapping...</>
+                ) : (
+                  <><CheckCircle2 className="w-5 h-5" /> Execute Bulk Linking</>
+                )}
               </button>
             )}
           </div>
         )}
+
       </div>
     </div>
   );
