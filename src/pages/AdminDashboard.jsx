@@ -186,13 +186,7 @@ if (attendanceToday && attendanceToday.length > 0) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="space-y-6">
-          <div className="bg-slate-900 rounded-xl shadow-md border border-slate-800 p-6 text-white overflow-hidden relative">
-            <Server className="w-32 h-32 text-slate-800 absolute -right-6 -bottom-6 opacity-50" />
-            <h3 className="text-sm font-bold text-school-yellow uppercase tracking-widest mb-4 flex items-center gap-2 relative z-10">
-              <Globe className="w-4 h-4" /> System Infrastructure
-            </h3>
+      
             
             <div className="grid grid-cols-2 gap-4 relative z-10">
               <div>
