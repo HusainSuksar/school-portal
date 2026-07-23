@@ -186,28 +186,6 @@ if (attendanceToday && attendanceToday.length > 0) {
         </div>
       </div>
 
-      
-            
-            <div className="grid grid-cols-2 gap-4 relative z-10">
-              <div>
-                <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">Coordinators</p>
-                <p className="text-2xl font-bold text-emerald-400">21</p>
-              </div>
-              <div>
-                <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">States Online</p>
-                <p className="text-2xl font-bold text-emerald-400">29</p>
-              </div>
-              <div className="col-span-2 pt-4 border-t border-slate-700 mt-2">
-                <div className="flex justify-between items-center mb-2">
-                  <p className="text-xs text-slate-400 uppercase tracking-wider">Database Status</p>
-                  <p className="text-xs font-bold text-emerald-400 flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span> Supabase Connected
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
 
         <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col">
           <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
@@ -246,6 +224,6 @@ if (attendanceToday && attendanceToday.length > 0) {
           </div>
         </div>
       </div>
-    </div>
+    
   );
 }

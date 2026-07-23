@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import InstallAppButton from '../components/InstallAppButton';
 
 import { 
   BookOpen, Users, Calendar, Settings, LogOut, HelpCircle, AlertTriangle, 
@@ -340,9 +341,7 @@ export default function Layout() {
         
         {/* Floating Action Buttons */}
         <div className="fixed bottom-6 right-6 flex flex-col gap-3 z-20">
-          <button className="bg-white p-3 rounded-full shadow-lg text-school-navy hover:bg-slate-50 transition-colors border border-slate-200 cursor-pointer">
-            <AlertTriangle className="w-5 h-5" />
-          </button>
+          <InstallAppButton />
           <button className="bg-school-yellow p-3 rounded-full shadow-lg text-school-navy hover:bg-yellow-400 transition-colors cursor-pointer">
             <HelpCircle className="w-5 h-5" />
           </button>
