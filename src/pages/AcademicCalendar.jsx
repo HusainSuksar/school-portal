@@ -13,7 +13,6 @@ export default function AcademicCalendar() {
   const [dbEvents, setDbEvents] = useState([]);
   const [counters, setCounters] = useState({ total: 0, working: 0, holidays: 0 });
 
-  // Admin Event Form
   const [newEventDate, setNewEventDate] = useState('');
   const [newEventTitle, setNewEventTitle] = useState('');
   const [newIsHoliday, setNewIsHoliday] = useState(false);
@@ -34,7 +33,6 @@ export default function AcademicCalendar() {
       setIsAdmin(profile?.role === 'ADMIN' || profile?.role === 'HOS');
     }
     
-    // Fetch live events from DB
     const { data: events } = await supabase.from('academic_calendar').select('*');
     if (events) setDbEvents(events);
   };
@@ -57,22 +55,16 @@ export default function AcademicCalendar() {
       const hMonthShort = HijriDate.getShortMonthName(hDate.getMonth());
       const hYear = hDate.getYear();
 
-      // Format YYYY-MM-DD ensuring local timezone safety
       const offset = gDate.getTimezoneOffset();
       const localDate = new Date(gDate.getTime() - (offset * 60 * 1000));
       const dateString = localDate.toISOString().split('T')[0];
 
-      // Check DB Events
       const dbEvent = eventsArr.find(e => e.date === dateString);
       
-      // Default: Sat (6) and Sun (0) are weekends unless a specific DB event overrides
       const isWeekend = gDate.getDay() === 0 || gDate.getDay() === 6;
       let isHoliday = isWeekend;
 
-      if (dbEvent) {
-        // If DB has an event, it explicitly defines if it's a holiday or not
-        isHoliday = dbEvent.is_holiday; 
-      }
+      if (dbEvent) isHoliday = dbEvent.is_holiday; 
 
       if (isHoliday) holidays++; else working++;
 
@@ -92,15 +84,16 @@ export default function AcademicCalendar() {
       date: newEventDate,
       title: newEventTitle,
       is_holiday: newIsHoliday
-    }]).select().single();
+    }]).select();
 
-    if (!error && data) {
-      setDbEvents([...dbEvents, data]);
+    if (!error && data && data.length > 0) {
+      setDbEvents([...dbEvents, data[0]]);
       setNewEventDate('');
       setNewEventTitle('');
       setNewIsHoliday(false);
-    } else if (error?.code === '23505') {
-      alert("An event already exists on this specific date. Delete it first.");
+    } else {
+      if (error?.code === '23505') alert("An event already exists on this specific date.");
+      else alert("Failed to add event. Please ensure you are an Admin.");
     }
     setIsSubmitting(false);
   };
@@ -112,8 +105,9 @@ export default function AcademicCalendar() {
 
   const nextMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
   const prevMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
-  
   const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+  const listEvents = calendarGrid.filter(d => d && d.event);
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 pb-12">
@@ -128,7 +122,6 @@ export default function AcademicCalendar() {
         </div>
       </div>
 
-      {/* Counters */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4 border-b-4 border-b-indigo-500">
           <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600"><CalendarIcon className="w-5 h-5" /></div>
@@ -144,7 +137,6 @@ export default function AcademicCalendar() {
         </div>
       </div>
 
-      {/* ADMIN CONTROL PANEL */}
       {isAdmin && (
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-6">
           <div className="p-4 border-b border-slate-100 bg-slate-50"><h3 className="font-bold text-school-navy">Admin Event Manager</h3></div>
@@ -160,7 +152,6 @@ export default function AcademicCalendar() {
         </div>
       )}
 
-      {/* Calendar Grid */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
           <button onClick={() => setCurrentDate(new Date())} className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-600 shadow-sm hover:bg-slate-50">Today</button>
@@ -206,17 +197,25 @@ export default function AcademicCalendar() {
           </div>
         ) : (
           <div className="divide-y divide-slate-100">
-            {calendarGrid.filter(d => d && d.event).map((dayObj) => (
-              <div key={dayObj.dateString} className="p-4 flex items-center gap-6">
-                <div className="w-16 text-center"><p className="text-xs font-bold text-slate-400 uppercase">{dayObj.gDate.toLocaleDateString('en-US', { weekday: 'short' })}</p><p className="text-2xl font-black text-school-navy">{dayObj.day}</p></div>
-                <div className="flex-1 pl-6 border-l border-slate-200 flex justify-between items-center">
-                  <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full uppercase ${dayObj.event.is_holiday ? 'bg-amber-100 text-amber-700' : 'bg-indigo-100 text-indigo-700'}`}>
-                    {dayObj.event.title}
-                  </span>
-                  {isAdmin && <button onClick={() => handleDeleteEvent(dayObj.event.id)} className="p-2 text-slate-400 hover:text-red-500 rounded-lg"><Trash2 className="w-4 h-4"/></button>}
+            {listEvents.length > 0 ? (
+              listEvents.map((dayObj) => (
+                <div key={dayObj.dateString} className="p-4 flex items-center gap-6">
+                  <div className="w-16 text-center"><p className="text-xs font-bold text-slate-400 uppercase">{dayObj.gDate.toLocaleDateString('en-US', { weekday: 'short' })}</p><p className="text-2xl font-black text-school-navy">{dayObj.day}</p></div>
+                  <div className="flex-1 pl-6 border-l border-slate-200 flex justify-between items-center">
+                    <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full uppercase ${dayObj.event.is_holiday ? 'bg-amber-100 text-amber-700' : 'bg-indigo-100 text-indigo-700'}`}>
+                      {dayObj.event.title}
+                    </span>
+                    {isAdmin && <button onClick={() => handleDeleteEvent(dayObj.event.id)} className="p-2 text-slate-400 hover:text-red-500 rounded-lg"><Trash2 className="w-4 h-4"/></button>}
+                  </div>
                 </div>
+              ))
+            ) : (
+              <div className="p-12 flex flex-col items-center justify-center text-slate-400">
+                <CalendarIcon className="w-12 h-12 mb-3 opacity-20" />
+                <h3 className="text-lg font-bold text-school-navy">No Events Scheduled</h3>
+                <p className="text-sm">There are no academic events or holidays saved for this month.</p>
               </div>
-            ))}
+            )}
           </div>
         )}
       </div>

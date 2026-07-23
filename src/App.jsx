@@ -31,6 +31,7 @@ import AcademicMapping from './pages/AcademicMapping';
 import ParentOnboarding from './pages/ParentOnboarding';
 import Attendance from './pages/Attendance';
 import RequestStudentLeave from './pages/RequestStudentLeave';
+import Profile from './pages/Profile';
 
 const CalendarPage = () => <h2 className="text-3xl font-bold text-school-navy">Academic Calendar</h2>;
 
@@ -99,6 +100,7 @@ export default function App() {
           <Route path="/parent-onboarding" element={<ParentOnboarding />} />
           <Route element={<Attendance />} path="/attendance" />
           <Route element={<RequestStudentLeave />} path="/request-leave" />
+          <Route element={<Profile />} path="/profile" />
         </Route>
         
       </Routes>
