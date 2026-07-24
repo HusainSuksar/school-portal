@@ -41,32 +41,46 @@ export default function Layout() {
           setProfile({ name: data.full_name, role: data.role });
 
           // --- NATIVE REALTIME ANNOUNCEMENT LISTENER ---
-          const channel = supabase
-            .channel('realtime_announcements')
-            .on(
-              'postgres_changes',
-              { event: 'INSERT', schema: 'public', table: 'announcements' },
-              (payload) => {
-                const newAnn = payload.new;
+          // src/components/Layout.jsx
 
-                // Check audience targeting
-                const isTargeted = 
-                  newAnn.target_audience === 'ALL' || 
-                  newAnn.target_audience === data.role;
+// Inside your useEffect where Supabase Realtime is initialized:
+const channel = supabase
+  .channel('realtime_announcements')
+  .on(
+    'postgres_changes',
+    { event: 'INSERT', schema: 'public', table: 'announcements' },
+    (payload) => {
+      const newAnn = payload.new;
 
-                if (isTargeted) {
-                  // Fire Native Browser Push Notification
-                  if (Notification.permission === 'granted') {
-                    new Notification(newAnn.title, {
-                      body: newAnn.message,
-                      icon: '/pwa-192x192.png',
-                      badge: '/favicon.ico',
-                    });
-                  }
-                }
-              }
-            )
-            .subscribe();
+      // Check audience targeting
+      const isTargeted = 
+        newAnn.target_audience === 'ALL' || 
+        newAnn.target_audience === data.role;
+
+      if (isTargeted && Notification.permission === 'granted') {
+        
+        // ✅ iPHONE & MOBILE COMPATIBLE NOTIFICATION TRIGGER
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.ready.then((registration) => {
+            registration.showNotification(newAnn.title, {
+              body: newAnn.message,
+              icon: '/pwa-192x192.png',
+              badge: '/favicon.ico',
+              vibrate: [200, 100, 200],
+            });
+          });
+        } else {
+          // Fallback for desktop browsers
+          new Notification(newAnn.title, {
+            body: newAnn.message,
+            icon: '/pwa-192x192.png',
+          });
+        }
+
+      }
+    }
+  )
+  .subscribe();
 
           return () => {
             supabase.removeChannel(channel);
