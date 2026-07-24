@@ -2,21 +2,18 @@
 import webpush from 'web-push';
 import { createClient } from '@supabase/supabase-js';
 
-// Configure Web Push with Environment Variables
 webpush.setVapidDetails(
   'mailto:admin@msbindore.org',
-  process.env.VITE_PUBLIC_VAPID_KEY, // We use the same public key
-  process.env.PRIVATE_VAPID_KEY      // SECRET: Kept hidden on Vercel
+  process.env.VITE_PUBLIC_VAPID_KEY, 
+  process.env.PRIVATE_VAPID_KEY      
 );
 
-// Initialize Supabase Admin Client to bypass Row Level Security
 const supabaseAdmin = createClient(
   process.env.VITE_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY // SECRET: Not your anon key!
+  process.env.SUPABASE_SERVICE_ROLE_KEY 
 );
 
 export default async function handler(req, res) {
-  // Only allow POST requests
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
@@ -24,10 +21,8 @@ export default async function handler(req, res) {
   try {
     const { title, message, targetAudience } = req.body;
 
-    // 1. Fetch target subscriptions from the database
     let query = supabaseAdmin.from('push_subscriptions').select('subscription');
     
-    // If not sending to ALL, filter by the specific role
     if (targetAudience !== 'ALL') {
       query = query.eq('role', targetAudience);
     }
@@ -35,22 +30,35 @@ export default async function handler(req, res) {
     const { data: subscriptions, error } = await query;
     if (error) throw error;
 
-    // 2. Trigger payloads directly to Apple APNs & Google FCM
+    // We will store the exact responses from Apple/Google here
+    const results = [];
+
     const pushPromises = subscriptions.map((sub) =>
       webpush.sendNotification(
         sub.subscription,
         JSON.stringify({ title, message, url: '/communication' })
-      ).catch((err) => {
-        // If a subscription expired or is invalid, you can log it or delete it here
-        console.error('Push delivery failed for a device:', err.statusCode);
+      )
+      .then(() => {
+        results.push({ status: 'success' });
+      })
+      .catch((err) => {
+        // UNMASK THE SILENT ERROR
+        results.push({ 
+          status: 'failed', 
+          reason: err.body || err.message || err.statusCode 
+        });
       })
     );
 
     await Promise.all(pushPromises);
 
-    return res.status(200).json({ success: true, message: 'Pushes sent!' });
+    // Send the results back to the browser Network tab
+    return res.status(200).json({ 
+      success: true, 
+      total_found: subscriptions.length,
+      results: results 
+    });
   } catch (error) {
-    console.error('Server error:', error);
-    return res.status(500).json({ error: 'Internal Server Error' });
+    return res.status(500).json({ error: error.message });
   }
 }

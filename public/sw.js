@@ -1,6 +1,15 @@
 // public/sw.js
 
-// 1. Listen for background Push events from APNs / FCM
+// 1. FORCE IMMEDIATE TAKEOVER ON MOBILE
+self.addEventListener('install', (event) => {
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(clients.claim());
+});
+
+// 2. Listen for background Push events
 self.addEventListener('push', (event) => {
   if (!event.data) return;
 
@@ -23,7 +32,7 @@ self.addEventListener('push', (event) => {
   }
 });
 
-// 2. Handle tapping on the notification
+// 3. Handle tapping on the notification
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const targetUrl = event.notification.data?.url || '/communication';
