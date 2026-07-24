@@ -45,29 +45,39 @@ export default function Layout() {
           }
 
           // --- NEW ONESIGNAL INTEGRATION ---
-         try {
+         // --- ONESIGNAL ASYNC SAFE INIT ---
+try {
   if (!window.OneSignalInitialized) {
     await OneSignal.init({
       appId: "697e82fa-393e-4640-8457-1f20f20bbdf0", // Your real OneSignal App ID
+      allowLocalhostAsSecureOrigin: true,
       serviceWorkerPath: "/OneSignalSDKWorker.js",
     });
     window.OneSignalInitialized = true;
   }
 
+  // 1. Wait for OneSignal SDK state to stabilize
+  if (user?.id) {
+    const currentExternalId = await OneSignal.User.externalId;
+    
+    // Only attempt login if the user ID differs to prevent 409 Conflict
+    if (currentExternalId !== user.id) {
+      if (currentExternalId) {
+        await OneSignal.logout();
+      }
+      await OneSignal.login(user.id);
+    }
+  }
+
+  // 2. Set user role tag safely after login resolves
   if (data?.role) {
     await OneSignal.User.addTag("role", data.role);
   }
 
-  // Handle identity clearing to resolve 409 Conflict
-  if (user?.id) {
-    if (OneSignal.User.externalId && OneSignal.User.externalId !== user.id) {
-      await OneSignal.logout();
-    }
-    await OneSignal.login(user.id);
-  }
 } catch (error) {
-  console.warn("OneSignal initialization note:", error);
+  console.warn("OneSignal Initialization Note:", error);
 }
+// ----------------------------------
           // ---------------------------------
         }
       }
