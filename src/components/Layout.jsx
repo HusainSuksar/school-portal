@@ -5,10 +5,10 @@ import { supabase } from '../lib/supabase';
 import InstallAppButton from './InstallAppButton';
 import OneSignal from 'react-onesignal';
 
-import { 
-  BookOpen, Users, Calendar, Settings, LogOut, HelpCircle, AlertTriangle, 
-  CheckCircle2, Award, FileText, BookTemplate, BarChart2, Trophy, Search, 
-  PhoneCall, History, ShieldCheck, Book, Shield, Briefcase , Database, Inbox,
+import {
+  BookOpen, Users, Calendar, Settings, LogOut, HelpCircle, AlertTriangle,
+  CheckCircle2, Award, FileText, BookTemplate, BarChart2, Trophy, Search,
+  PhoneCall, History, ShieldCheck, Book, Shield, Briefcase, Database, Inbox,
   LifeBuoy, Activity, GraduationCap, Key, Lock, Link, CalendarClock, Menu, X, User
 } from 'lucide-react';
 
@@ -16,60 +16,64 @@ export default function Layout() {
   const [profile, setProfile] = useState({ name: 'Loading...', role: '' });
   const [showPasswordReset, setShowPasswordReset] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  
+
   // Password Reset State
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
-  
+
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
-  async function fetchUserProfile() {
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (user) {
-      const { data } = await supabase
-        .from('profiles')
-        .select('full_name, role, requires_password_change')
-        .eq('id', user.id)
-        .single();
-        
-      if (data) {
-        setProfile({ name: data.full_name, role: data.role });
-        
-        if (data.requires_password_change) {
-          setShowPasswordReset(true);
-        }
+    async function fetchUserProfile() {
+      const { data: { user } } = await supabase.auth.getUser();
 
-        // --- NEW ONESIGNAL INTEGRATION ---
-        try {
-  // Prevent React Strict Mode from double-initializing
-  if (!window.OneSignalInitialized) {
-    await OneSignal.init({
-      appId: "697e82fa-393e-4640-8457-1f20f20bbdf0", // <--- MUST BE YOUR ACTUAL ID
-      allowLocalhostAsSecureOrigin: true,
-    });
-    window.OneSignalInitialized = true;
-  }
-  
-  await OneSignal.login(user.id);
-  await OneSignal.User.addTag("role", data.role);
-  
-} catch (error) {
-  // Safely ignore the strict-mode duplicate error
-  if (!error.message?.includes('already initialized')) {
-    console.error("OneSignal Error:", error);
-  }
-}
-        // ---------------------------------
+      if (user) {
+        const { data } = await supabase
+          .from('profiles')
+          .select('full_name, role, requires_password_change')
+          .eq('id', user.id)
+          .single();
+
+        if (data) {
+          setProfile({ name: data.full_name, role: data.role });
+
+          if (data.requires_password_change) {
+            setShowPasswordReset(true);
+          }
+
+          // --- NEW ONESIGNAL INTEGRATION ---
+          try {
+            // Prevent React Strict Mode from double-initializing
+            if (!window.OneSignalInitialized) {
+              await OneSignal.init({
+                appId: "697e82fa-393e-4640-8457-1f20f20bbdf0", // <--- MUST BE YOUR ACTUAL ID
+                allowLocalhostAsSecureOrigin: true,
+                serviceWorkerParam: { scope: "/" },
+                serviceWorkerPath: "OneSignalSDKWorker.js",
+              });
+              window.OneSignalInitialized = true;
+            }
+
+            if (data?.role) {
+              await OneSignal.User.addTag("role", data.role);
+            }
+
+            // Login user safely to prevent 409 Conflict
+            if (user?.id && OneSignal.User.externalId !== user.id) {
+              await OneSignal.login(user.id);
+            }
+          } catch (error) {
+            console.warn("OneSignal initialization note:", error);
+          }
+          // ---------------------------------
+        }
       }
     }
-  }
-  fetchUserProfile();
-}, []);
+    fetchUserProfile();
+  }, []);
 
   useEffect(() => {
     setIsMobileMenuOpen(false);
@@ -78,19 +82,19 @@ export default function Layout() {
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
     if (!error) {
-      window.location.href = '/login'; 
+      window.location.href = '/login';
     }
   };
 
   const handlePasswordUpdate = async (e) => {
     e.preventDefault();
     setErrorMsg('');
-    
+
     if (newPassword.length < 6) {
       setErrorMsg('Password must be at least 6 characters long.');
       return;
     }
-    
+
     if (newPassword !== confirmPassword) {
       setErrorMsg('Passwords do not match.');
       return;
@@ -116,12 +120,11 @@ export default function Layout() {
     await supabase.auth.signOut();
     setShowPasswordReset(false);
     setIsUpdating(false);
-    window.location.href = '/login'; 
+    window.location.href = '/login';
   };
 
-  const navLinkClass = ({isActive}) => 
-    `flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors text-sm font-medium ${
-      isActive ? 'bg-slate-800 text-school-yellow' : 'hover:bg-slate-800 hover:text-white'
+  const navLinkClass = ({ isActive }) =>
+    `flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors text-sm font-medium ${isActive ? 'bg-slate-800 text-school-yellow' : 'hover:bg-slate-800 hover:text-white'
     }`;
 
   const isParent = profile.role === 'PARENT';
@@ -131,7 +134,7 @@ export default function Layout() {
 
   return (
     <div className="flex flex-col md:flex-row h-screen w-screen bg-school-gray overflow-hidden relative">
-      
+
       {/* --- PASSWORD RESET INTERCEPTOR MODAL --- */}
       {showPasswordReset && (
         <div className="absolute inset-0 z-50 bg-school-navy/95 backdrop-blur-sm flex items-center justify-center p-4">
@@ -139,7 +142,7 @@ export default function Layout() {
             <div className="w-12 h-12 bg-indigo-50 rounded-full flex items-center justify-center mb-6 shadow-sm border border-indigo-100">
               <Lock className="w-6 h-6 text-indigo-600" />
             </div>
-            
+
             <h2 className="text-2xl font-bold text-school-navy mb-2">Secure Your Account</h2>
             <p className="text-sm text-slate-500 mb-6">
               Welcome, {profile.name}! Because this is your first time logging in, you are required to change your default password to continue.
@@ -157,8 +160,8 @@ export default function Layout() {
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">New Password</label>
                 <div className="relative">
                   <Key className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input 
-                    type="password" 
+                  <input
+                    type="password"
                     required
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
@@ -172,8 +175,8 @@ export default function Layout() {
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Confirm Password</label>
                 <div className="relative">
                   <CheckCircle2 className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input 
-                    type="password" 
+                  <input
+                    type="password"
                     required
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
@@ -184,14 +187,14 @@ export default function Layout() {
               </div>
 
               <div className="pt-4 flex gap-3">
-                <button 
+                <button
                   type="button"
                   onClick={handleLogout}
                   className="flex-1 py-2.5 border border-slate-200 text-slate-600 rounded-lg text-sm font-bold hover:bg-slate-50 transition-colors"
                 >
                   Cancel & Logout
                 </button>
-                <button 
+                <button
                   type="submit"
                   disabled={isUpdating || !newPassword || !confirmPassword}
                   className="flex-1 bg-school-navy text-white rounded-lg text-sm font-bold hover:bg-slate-800 transition-colors flex items-center justify-center gap-2 disabled:opacity-70"
@@ -210,7 +213,7 @@ export default function Layout() {
           <BookOpen className="w-6 h-6 text-school-yellow" />
           <h1 className="font-bold text-lg tracking-wider">Portal</h1>
         </div>
-        <button 
+        <button
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           className="p-2 text-slate-300 hover:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-600"
         >
@@ -223,7 +226,7 @@ export default function Layout() {
         fixed inset-y-0 left-0 z-40 w-72 md:w-64 bg-school-navy text-slate-300 flex flex-col justify-between border-r border-slate-800 transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:h-screen
         ${isMobileMenuOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}
       `}>
-        
+
         <div className="flex flex-col flex-1 overflow-hidden">
           <div className="p-6 border-b border-slate-700 bg-school-navy hidden md:block shrink-0">
             <h1 className="text-2xl font-bold text-school-yellow flex items-center gap-2">
@@ -231,9 +234,9 @@ export default function Layout() {
               Portal
             </h1>
           </div>
-          
+
           <nav className="p-4 space-y-6 overflow-y-auto flex-1 custom-scrollbar">
-            
+
             {isParent && (
               <div>
                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Parent Portal</p>
@@ -350,7 +353,7 @@ export default function Layout() {
 
       {/* --- MOBILE OVERLAY BACKDROP --- */}
       {isMobileMenuOpen && (
-        <div 
+        <div
           onClick={() => setIsMobileMenuOpen(false)}
           className="fixed inset-0 bg-black/60 z-30 md:hidden backdrop-blur-sm transition-opacity"
         />
@@ -359,7 +362,7 @@ export default function Layout() {
       {/* --- MAIN CONTENT AREA --- */}
       <main className="flex-1 relative overflow-y-auto p-4 md:p-8 bg-slate-50">
         <Outlet />
-        
+
         {/* Floating Action Buttons */}
         <div className="fixed bottom-6 right-6 flex flex-col gap-3 z-20">
           <InstallAppButton />
@@ -368,7 +371,7 @@ export default function Layout() {
           </button>
         </div>
       </main>
-      
+
     </div>
   );
 }
