@@ -27,18 +27,61 @@ export default function Profile() {
     }
     setIsLoading(false);
   };
+  
+
+// src/pages/Profile.jsx
+
+// Helper function to convert VAPID base64 string
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
 
 const handleEnablePush = async () => {
-  if (!('Notification' in window)) {
-    alert('This browser does not support web notifications.');
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    alert('Push notifications are not supported on this browser/device.');
     return;
   }
 
-  const permission = await Notification.requestPermission();
-  if (permission === 'granted') {
-    alert('Notifications enabled successfully!');
-  } else if (permission === 'denied') {
-    alert('Notification permission was blocked. Please enable it in browser settings.');
+  try {
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') {
+      alert('Notification permission was denied.');
+      return;
+    }
+
+    const registration = await navigator.serviceWorker.ready;
+
+    // Paste YOUR PUBLIC VAPID KEY generated in Step 2 here
+    const PUBLIC_VAPID_KEY = "BNlMSjHRveSNG46-s1f5lJt66IDt0Nyj171cxykcdgfxdX9CLFOKyhZ7PvFWFsPKjqg6D384pl9zq7TmtyT5vZo";
+
+    const subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
+    });
+
+    // Save or update subscription in Supabase
+    const { error } = await supabase.from('push_subscriptions').upsert({
+      user_id: user.id,
+      role: profile.role || 'PARENT',
+      subscription: subscription.toJSON()
+    }, { onConflict: 'user_id' });
+
+    if (!error) {
+      alert('Mobile push notifications enabled successfully!');
+    } else {
+      console.error(error);
+      alert('Failed to save push subscription.');
+    }
+  } catch (err) {
+    console.error('Subscription error:', err);
+    alert('Error setting up notifications: ' + err.message);
   }
 };
 

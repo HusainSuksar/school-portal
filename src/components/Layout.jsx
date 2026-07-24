@@ -27,7 +27,7 @@ export default function Layout() {
   const location = useLocation();
 
   useEffect(() => {
-    async function initUserAndRealtime() {
+    async function initUser() {
       const { data: { user } } = await supabase.auth.getUser();
 
       if (user) {
@@ -39,57 +39,14 @@ export default function Layout() {
 
         if (data) {
           setProfile({ name: data.full_name, role: data.role });
-
-          // --- NATIVE REALTIME ANNOUNCEMENT LISTENER ---
-          // src/components/Layout.jsx
-
-// Inside your useEffect where Supabase Realtime is initialized:
-const channel = supabase
-  .channel('realtime_announcements')
-  .on(
-    'postgres_changes',
-    { event: 'INSERT', schema: 'public', table: 'announcements' },
-    (payload) => {
-      const newAnn = payload.new;
-
-      // Check audience targeting
-      const isTargeted = 
-        newAnn.target_audience === 'ALL' || 
-        newAnn.target_audience === data.role;
-
-      if (isTargeted && Notification.permission === 'granted') {
-        
-        // ✅ iPHONE & MOBILE COMPATIBLE NOTIFICATION TRIGGER
-        if ('serviceWorker' in navigator) {
-          navigator.serviceWorker.ready.then((registration) => {
-            registration.showNotification(newAnn.title, {
-              body: newAnn.message,
-              icon: '/pwa-192x192.png',
-              badge: '/favicon.ico',
-              vibrate: [200, 100, 200],
-            });
-          });
-        } else {
-          // Fallback for desktop browsers
-          new Notification(newAnn.title, {
-            body: newAnn.message,
-            icon: '/pwa-192x192.png',
-          });
-        }
-
-      }
-    }
-  )
-  .subscribe();
-
-          return () => {
-            supabase.removeChannel(channel);
-          };
+          // If password change is required, show modal
+          if (data.requires_password_change) {
+            setShowPasswordReset(true);
+          }
         }
       }
     }
-
-    initUserAndRealtime();
+    initUser();
   }, []);
 
   useEffect(() => {

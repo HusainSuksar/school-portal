@@ -103,29 +103,33 @@ export default function Communication() {
     if (!title || !message) return;
     setIsSubmitting(true);
     
-    const { error } = await supabase.from('announcements').insert([{ title, message, target_audience: targetAudience, created_by: currentUserProfile.id }]);
-    if (!error) { setTitle(''); setMessage(''); setTargetAudience('ALL'); fetchHubData(); }
-    setIsSubmitting(false);
-  };
-
-  const handleLogSubmit = async (e) => {
-    e.preventDefault();
-    if (!activeStudent || !logNotes) return;
-    setIsSubmitting(true);
-
-    const { error } = await supabase.from('communication_logs').insert([{
-      teacher_id: currentUserProfile.id,
-      student_id: activeStudent.id,
-      log_type: logType,
-      notes: logNotes
+    // 1. Save to Supabase database (as usual)
+    const { error } = await supabase.from('announcements').insert([{ 
+      title, 
+      message, 
+      target_audience: targetAudience, 
+      created_by: currentUserProfile.id 
     }]);
 
-    if (!error) {
-      setLogNotes(''); setLogType('Routine Call'); setShowLogModal(false); setActiveStudent(null);
-      fetchHubData(); // Re-sorts the queue and updates history!
-    } else {
-      alert("Failed to save communication log.");
+    if (!error) { 
+      // 2. NEW: Call your Vercel Serverless Function to fire the Push Notifications
+      try {
+        await fetch('/api/broadcast', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, message, targetAudience })
+        });
+      } catch (pushError) {
+        console.error("Failed to trigger push API:", pushError);
+      }
+
+      // 3. Reset form
+      setTitle(''); 
+      setMessage(''); 
+      setTargetAudience('ALL'); 
+      fetchHubData(); 
     }
+    
     setIsSubmitting(false);
   };
 
