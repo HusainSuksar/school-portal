@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import InstallAppButton from './InstallAppButton';
-import OneSignal from 'react-onesignal';
+
 
 import {
   BookOpen, Users, Calendar, Settings, LogOut, HelpCircle, AlertTriangle,
@@ -27,7 +27,7 @@ export default function Layout() {
   const location = useLocation();
 
   useEffect(() => {
-    async function fetchUserProfile() {
+    async function initUserAndRealtime() {
       const { data: { user } } = await supabase.auth.getUser();
 
       if (user) {
@@ -40,44 +40,42 @@ export default function Layout() {
         if (data) {
           setProfile({ name: data.full_name, role: data.role });
 
-          if (data.requires_password_change) {
-            setShowPasswordReset(true);
-          }
+          // --- NATIVE REALTIME ANNOUNCEMENT LISTENER ---
+          const channel = supabase
+            .channel('realtime_announcements')
+            .on(
+              'postgres_changes',
+              { event: 'INSERT', schema: 'public', table: 'announcements' },
+              (payload) => {
+                const newAnn = payload.new;
 
-          // --- NEW ONESIGNAL INTEGRATION ---
-         // --- ONESIGNAL ASYNC SAFE INIT ---
-// --- ONESIGNAL INIT ---
-// --- ONESIGNAL ASYNC SAFE INIT ---
-// --- ONESIGNAL CLEAN TAG-BASED INTEGRATION ---
-try {
-  if (!window.OneSignalInitialized) {
-    await OneSignal.init({
-      appId: "697e82fa-393e-4640-8457-1f20f20bbdf0",
-      allowLocalhostAsSecureOrigin: true,
-      serviceWorkerPath: "OneSignalSDKWorker.js",
-    });
-    window.OneSignalInitialized = true;
-  }
+                // Check audience targeting
+                const isTargeted = 
+                  newAnn.target_audience === 'ALL' || 
+                  newAnn.target_audience === data.role;
 
-  // Tag user with Role & User ID (Avoids 409 Identity Conflicts completely)
-  if (data?.role) {
-    await OneSignal.User.addTag("role", data.role);
-  }
-  if (user?.id) {
-    await OneSignal.User.addTag("user_id", user.id);
-  }
+                if (isTargeted) {
+                  // Fire Native Browser Push Notification
+                  if (Notification.permission === 'granted') {
+                    new Notification(newAnn.title, {
+                      body: newAnn.message,
+                      icon: '/pwa-192x192.png',
+                      badge: '/favicon.ico',
+                    });
+                  }
+                }
+              }
+            )
+            .subscribe();
 
-} catch (error) {
-  console.warn("OneSignal Init Note:", error);
-}
-// ---------------------------------------------
-// ----------------------------------
-// ----------------------------------
-          // ---------------------------------
+          return () => {
+            supabase.removeChannel(channel);
+          };
         }
       }
     }
-    fetchUserProfile();
+
+    initUserAndRealtime();
   }, []);
 
   useEffect(() => {

@@ -27,28 +27,41 @@ export default function Profile() {
     }
     setIsLoading(false);
   };
+
 const handleEnablePush = async () => {
-  await OneSignal.Slidedown.promptPush();
+  if (!('Notification' in window)) {
+    alert('This browser does not support web notifications.');
+    return;
+  }
+
+  const permission = await Notification.requestPermission();
+  if (permission === 'granted') {
+    alert('Notifications enabled successfully!');
+  } else if (permission === 'denied') {
+    alert('Notification permission was blocked. Please enable it in browser settings.');
+  }
 };
-  const handleUpdateContact = async (e) => {
-    e.preventDefault();
-    setIsSaving(true);
-    setStatus({ type: '', msg: '' });
 
-    const { error } = await supabase.from('profiles').update({
-      phone_number: profile.phone_number,
-      personal_email: profile.personal_email,
-      address: profile.address
-    }).eq('id', user.id);
+// ✅ RESTORED FUNCTION HEADER
+const handleUpdateContact = async (e) => {
+  e.preventDefault();
+  setIsSaving(true);
+  setStatus({ type: '', msg: '' });
 
-    if (!error) {
-      setStatus({ type: 'success', msg: 'Contact information updated successfully.' });
-      setTimeout(() => setStatus({ type: '', msg: '' }), 3000);
-    } else {
-      setStatus({ type: 'error', msg: 'Failed to update contact info.' });
-    }
-    setIsSaving(false);
-  };
+  const { error } = await supabase.from('profiles').update({
+    phone_number: profile.phone_number,
+    personal_email: profile.personal_email,
+    address: profile.address
+  }).eq('id', user.id);
+
+  if (!error) {
+    setStatus({ type: 'success', msg: 'Contact information updated successfully.' });
+    setTimeout(() => setStatus({ type: '', msg: '' }), 3000);
+  } else {
+    setStatus({ type: 'error', msg: 'Failed to update contact info.' });
+  }
+  setIsSaving(false);
+};
 
   const handlePasswordChange = async (e) => {
     e.preventDefault();
@@ -205,5 +218,5 @@ const handleEnablePush = async () => {
         </div>
       </div>
     </div>
-  );
+  );  
 }
