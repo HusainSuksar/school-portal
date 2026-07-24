@@ -27,7 +27,9 @@ export default function Profile() {
     }
     setIsLoading(false);
   };
-
+const handleEnablePush = async () => {
+  await OneSignal.Slidedown.promptPush();
+};
   const handleUpdateContact = async (e) => {
     e.preventDefault();
     setIsSaving(true);
@@ -161,6 +163,24 @@ export default function Profile() {
               </div>
             </form>
           </div>
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mt-6">
+  <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+    <h3 className="font-bold text-school-navy flex items-center gap-2">Device Notifications</h3>
+  </div>
+  <div className="p-6 flex items-center justify-between">
+    <div>
+      <p className="text-sm font-bold text-slate-700">Receive Urgent Alerts</p>
+      <p className="text-xs text-slate-500 mt-1">Get notified on this device when important school announcements are broadcasted.</p>
+    </div>
+    <button 
+      type="button" 
+      onClick={handleEnablePush} 
+      className="bg-indigo-50 text-indigo-600 hover:bg-indigo-100 px-4 py-2 rounded-lg text-sm font-bold transition-colors border border-indigo-200"
+    >
+      Enable Alerts
+    </button>
+  </div>
+</div>
 
           {/* Password Security */}
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
