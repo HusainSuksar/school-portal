@@ -48,31 +48,29 @@ export default function Layout() {
          // --- ONESIGNAL ASYNC SAFE INIT ---
 // --- ONESIGNAL INIT ---
 // --- ONESIGNAL ASYNC SAFE INIT ---
+// --- ONESIGNAL CLEAN TAG-BASED INTEGRATION ---
 try {
   if (!window.OneSignalInitialized) {
     await OneSignal.init({
-      appId: "697e82fa-393e-4640-8457-1f20f20bbdf0", // Your App ID
-      serviceWorkerPath: "/OneSignalSDKWorker.js",
-      // THE SILVER BULLET: This isolates OneSignal from vite-plugin-pwa!
-      serviceWorkerParam: { scope: "/onesignal-scope/" }, 
+      appId: "697e82fa-393e-4640-8457-1f20f20bbdf0",
+      allowLocalhostAsSecureOrigin: true,
+      serviceWorkerPath: "OneSignalSDKWorker.js",
     });
     window.OneSignalInitialized = true;
   }
 
+  // Tag user with Role & User ID (Avoids 409 Identity Conflicts completely)
   if (data?.role) {
     await OneSignal.User.addTag("role", data.role);
   }
-
   if (user?.id) {
-    const currentId = await OneSignal.User.externalId;
-    if (currentId !== user.id) {
-      if (currentId) await OneSignal.logout();
-      await OneSignal.login(user.id);
-    }
+    await OneSignal.User.addTag("user_id", user.id);
   }
+
 } catch (error) {
-  console.warn("OneSignal note:", error);
+  console.warn("OneSignal Init Note:", error);
 }
+// ---------------------------------------------
 // ----------------------------------
 // ----------------------------------
           // ---------------------------------
