@@ -47,7 +47,7 @@ export default function Layout() {
         // --- NEW ONESIGNAL INTEGRATION ---
         try {
           await OneSignal.init({
-            appId: "YOUR_ONESIGNAL_APP_ID", // <-- PASTE YOUR APP ID HERE
+            appId: "697e82fa-393e-4640-8457-1f20f20bbdf0", // <-- PASTE YOUR APP ID HERE
             allowLocalhostAsSecureOrigin: true, // Allows testing on localhost
           });
           
