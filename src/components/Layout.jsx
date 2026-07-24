@@ -46,19 +46,24 @@ export default function Layout() {
 
         // --- NEW ONESIGNAL INTEGRATION ---
         try {
-          await OneSignal.init({
-            appId: "697e82fa-393e-4640-8457-1f20f20bbdf0", // <-- PASTE YOUR APP ID HERE
-            allowLocalhostAsSecureOrigin: true, // Allows testing on localhost
-          });
-          
-          // Securely tie the device to this specific user ID
-          await OneSignal.login(user.id);
-          
-          // Tag the user with their role so we can target "PARENTS" or "STAFF"
-          await OneSignal.User.addTag("role", data.role);
-        } catch (error) {
-          console.error("OneSignal Init Error:", error);
-        }
+  // Prevent React Strict Mode from double-initializing
+  if (!window.OneSignalInitialized) {
+    await OneSignal.init({
+      appId: "697e82fa-393e-4640-8457-1f20f20bbdf0", // <--- MUST BE YOUR ACTUAL ID
+      allowLocalhostAsSecureOrigin: true,
+    });
+    window.OneSignalInitialized = true;
+  }
+  
+  await OneSignal.login(user.id);
+  await OneSignal.User.addTag("role", data.role);
+  
+} catch (error) {
+  // Safely ignore the strict-mode duplicate error
+  if (!error.message?.includes('already initialized')) {
+    console.error("OneSignal Error:", error);
+  }
+}
         // ---------------------------------
       }
     }
