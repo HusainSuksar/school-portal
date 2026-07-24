@@ -1,3 +1,4 @@
+// vite.config.js
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
@@ -7,12 +8,15 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
+      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'OneSignalSDKWorker.js'], // <--- ADD HERE
+      workbox: {
+        navigateFallbackDenylist: [/^\/OneSignalSDKWorker\.js/], // <--- PREVENT WORKBOX INTERCEPTION
+      },
       manifest: {
         name: 'MSB Indore Portal',
         short_name: 'MSB Portal',
         description: 'School Operations & Communication Portal',
-        theme_color: '#1e293b', // Matches your school-navy
+        theme_color: '#1e293b',
         background_color: '#ffffff',
         display: 'standalone',
         icons: [

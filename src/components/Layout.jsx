@@ -45,29 +45,29 @@ export default function Layout() {
           }
 
           // --- NEW ONESIGNAL INTEGRATION ---
-          try {
-            // Prevent React Strict Mode from double-initializing
-            if (!window.OneSignalInitialized) {
-              await OneSignal.init({
-                appId: "697e82fa-393e-4640-8457-1f20f20bbdf0", // <--- MUST BE YOUR ACTUAL ID
-                allowLocalhostAsSecureOrigin: true,
-                serviceWorkerParam: { scope: "/" },
-                serviceWorkerPath: "OneSignalSDKWorker.js",
-              });
-              window.OneSignalInitialized = true;
-            }
+         try {
+  if (!window.OneSignalInitialized) {
+    await OneSignal.init({
+      appId: "697e82fa-393e-4640-8457-1f20f20bbdf0", // Your real OneSignal App ID
+      serviceWorkerPath: "/OneSignalSDKWorker.js",
+    });
+    window.OneSignalInitialized = true;
+  }
 
-            if (data?.role) {
-              await OneSignal.User.addTag("role", data.role);
-            }
+  if (data?.role) {
+    await OneSignal.User.addTag("role", data.role);
+  }
 
-            // Login user safely to prevent 409 Conflict
-            if (user?.id && OneSignal.User.externalId !== user.id) {
-              await OneSignal.login(user.id);
-            }
-          } catch (error) {
-            console.warn("OneSignal initialization note:", error);
-          }
+  // Handle identity clearing to resolve 409 Conflict
+  if (user?.id) {
+    if (OneSignal.User.externalId && OneSignal.User.externalId !== user.id) {
+      await OneSignal.logout();
+    }
+    await OneSignal.login(user.id);
+  }
+} catch (error) {
+  console.warn("OneSignal initialization note:", error);
+}
           // ---------------------------------
         }
       }
