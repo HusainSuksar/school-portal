@@ -7,13 +7,8 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      strategies: 'injectManifest',
-      srcDir: 'public',
-      filename: 'sw.js',
       registerType: 'autoUpdate',
-      injectManifest: {
-        injectionPoint: undefined, // Prevents Workbox warning if no precache manifest is needed
-      },
+      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'OneSignalSDKWorker.js'],
       manifest: {
         name: 'MSB Indore Portal',
         short_name: 'MSB Portal',
@@ -22,9 +17,22 @@ export default defineConfig({
         background_color: '#ffffff',
         display: 'standalone',
         icons: [
-          { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },
-          { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png' },
-          { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
+          {
+            src: 'pwa-192x192.png',
+            sizes: '192x192',
+            type: 'image/png'
+          },
+          {
+            src: 'pwa-512x512.png',
+            sizes: '512x512',
+            type: 'image/png'
+          },
+          {
+            src: 'pwa-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'any maskable'
+          }
         ]
       }
     })

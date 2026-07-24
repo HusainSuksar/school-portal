@@ -47,11 +47,14 @@ export default function Layout() {
           // --- NEW ONESIGNAL INTEGRATION ---
          // --- ONESIGNAL ASYNC SAFE INIT ---
 // --- ONESIGNAL INIT ---
+// --- ONESIGNAL ASYNC SAFE INIT ---
 try {
   if (!window.OneSignalInitialized) {
     await OneSignal.init({
-      appId: "697e82fa-393e-4640-8457-1f20f20bbdf0", // Your real OneSignal App ID
-      serviceWorkerPath: "/sw.js", // Points to public/sw.js
+      appId: "697e82fa-393e-4640-8457-1f20f20bbdf0", // Your App ID
+      serviceWorkerPath: "/OneSignalSDKWorker.js",
+      // THE SILVER BULLET: This isolates OneSignal from vite-plugin-pwa!
+      serviceWorkerParam: { scope: "/onesignal-scope/" }, 
     });
     window.OneSignalInitialized = true;
   }
@@ -70,6 +73,7 @@ try {
 } catch (error) {
   console.warn("OneSignal note:", error);
 }
+// ----------------------------------
 // ----------------------------------
           // ---------------------------------
         }
