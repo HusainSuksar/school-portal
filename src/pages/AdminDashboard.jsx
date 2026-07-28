@@ -15,6 +15,11 @@ export default function AdminDashboard() {
   });
   const [recentLogs, setRecentLogs] = useState([]);
 
+  // --- New States for Ticket Routing ---
+  const [teachers, setTeachers] = useState([]);
+  const [routingRules, setRoutingRules] = useState([]);
+  const [isUpdatingRouting, setIsUpdatingRouting] = useState(false);
+
   const [currentDate] = useState(new Date().toLocaleDateString('en-GB', { 
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' 
   }));
@@ -68,17 +73,16 @@ export default function AdminDashboard() {
         }
 
         // 4. Today's Attendance Percentage
-        // The Corrected Logic for AdminDashboard:
-const { data: attendanceToday } = await supabase
-  .from('attendance')
-  .select('status')
-  .eq('date', today);
+        const { data: attendanceToday } = await supabase
+          .from('attendance')
+          .select('status')
+          .eq('date', today);
 
-let attPercentage = 0;
-if (attendanceToday && attendanceToday.length > 0) {
-  const attendedCount = attendanceToday.filter(r => r.status === 'Present' || r.status === 'Late').length;
-  attPercentage = Math.round((attendedCount / attendanceToday.length) * 100);
-}
+        let attPercentage = 0;
+        if (attendanceToday && attendanceToday.length > 0) {
+          const attendedCount = attendanceToday.filter(r => r.status === 'Present' || r.status === 'Late').length;
+          attPercentage = Math.round((attendedCount / attendanceToday.length) * 100);
+        }
 
         setGlobalStats({
           totalStudents: studentCount || 0,
@@ -87,6 +91,20 @@ if (attendanceToday && attendanceToday.length > 0) {
           tanbeehToday: tanbeeh,
           attendanceToday: attPercentage
         });
+
+        // 5. Fetch all teachers for the dropdowns
+        const { data: teacherList } = await supabase
+          .from('profiles')
+          .select('id, full_name')
+          .in('role', ['TEACHER', 'CLASS_TR']);
+        if (teacherList) setTeachers(teacherList);
+
+        // 6. Fetch current routing rules
+        const { data: rules } = await supabase
+          .from('ticket_assignments')
+          .select('*')
+          .order('section_id');
+        if (rules) setRoutingRules(rules);
 
       } catch (error) {
         console.error("Error fetching global stats:", error);
@@ -97,6 +115,22 @@ if (attendanceToday && attendanceToday.length > 0) {
 
     fetchGlobalStats();
   }, []);
+
+  const handleUpdateRouting = async (sectionId, teacherId) => {
+    setIsUpdatingRouting(true);
+    const { error } = await supabase
+      .from('ticket_assignments')
+      .update({ teacher_id: teacherId, updated_at: new Date().toISOString() })
+      .eq('section_id', sectionId);
+    
+    if (!error) {
+      alert('Routing rule updated successfully!');
+      setRoutingRules(prev => prev.map(rule => rule.section_id === sectionId ? { ...rule, teacher_id: teacherId } : rule));
+    } else {
+      alert('Failed to update routing rule.');
+    }
+    setIsUpdatingRouting(false);
+  };
 
   if (isLoading) {
     return (
@@ -119,7 +153,6 @@ if (attendanceToday && attendanceToday.length > 0) {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 pb-12">
-      {/* ... [Rest of your AdminDashboard return statement remains exactly the same] ... */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-4 border-b border-slate-200">
         <div>
           <h2 className="text-2xl font-bold text-school-navy flex items-center gap-2">
@@ -186,8 +219,42 @@ if (attendanceToday && attendanceToday.length > 0) {
         </div>
       </div>
 
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* SUPPORT TICKET ROUTING CONTROL */}
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col">
+          <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+            <h3 className="font-bold text-school-navy flex items-center gap-2">
+              <ShieldAlert className="w-5 h-5 text-indigo-500" /> Support Ticket Routing
+            </h3>
+          </div>
+          <div className="p-6">
+            <p className="text-sm text-slate-500 mb-6">Assign which teacher receives help tickets for each academic tier. Admins will still see all tickets.</p>
+            <div className="space-y-4">
+              {routingRules.map((rule) => (
+                <div key={rule.section_id} className="flex flex-col md:flex-row md:items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-lg gap-4">
+                  <div>
+                    <h4 className="font-bold text-school-navy">{rule.section_name}</h4>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{rule.section_id}</p>
+                  </div>
+                  <select 
+                    value={rule.teacher_id || ''} 
+                    onChange={(e) => handleUpdateRouting(rule.section_id, e.target.value)}
+                    disabled={isUpdatingRouting}
+                    className="p-2.5 bg-white border border-slate-300 rounded-lg text-sm font-medium focus:outline-none focus:border-indigo-500 min-w-[200px]"
+                  >
+                    <option value="">-- Unassigned --</option>
+                    {teachers.map(t => (
+                      <option key={t.id} value={t.id}>{t.full_name}</option>
+                    ))}
+                  </select>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
 
-        <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col">
+        {/* LIVE BEHAVIOR LOG */}
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col">
           <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
             <h3 className="font-bold text-school-navy flex items-center gap-2">
               <Activity className="w-5 h-5 text-slate-400" /> Live Behavior Log
@@ -224,6 +291,6 @@ if (attendanceToday && attendanceToday.length > 0) {
           </div>
         </div>
       </div>
-    
+    </div>
   );
 }

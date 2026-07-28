@@ -31,12 +31,21 @@ export default function HelpCentre() {
     const { data: { user } } = await supabase.auth.getUser();
     setCurrentUser(user);
 
-    const { data } = await supabase
-      .from('support_tickets')
-      .select('*')
-      .eq('created_by', user.id)
-      .order('created_at', { ascending: false });
+    // Get user role to determine what they can see
+    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+    
+    let query = supabase.from('support_tickets').select('*, profiles!created_by(full_name, role)').order('created_at', { ascending: false });
 
+    if (profile?.role === 'PARENT') {
+      // Parents only see tickets they created
+      query = query.eq('created_by', user.id);
+    } else if (profile?.role === 'TEACHER' || profile?.role === 'CLASS_TR') {
+      // Teachers see tickets assigned to them OR created by them
+      query = query.or(`assigned_to.eq.${user.id},created_by.eq.${user.id}`);
+    } 
+    // ADMIN and HOS see ALL tickets (no filter applied)
+
+    const { data } = await query;
     if (data) setTickets(data);
     setIsLoading(false);
   };
@@ -60,12 +69,57 @@ export default function HelpCentre() {
     e.preventDefault();
     setIsSending(true);
     
+    let assignedTeacherId = null;
+
+    try {
+      // 1. Find the parent's child to get their class
+      const { data: student } = await supabase
+        .from('students')
+        .select('classes(class_name)')
+        .eq('parent_id', currentUser.id)
+        .limit(1)
+        .single();
+
+      let sectionId = 'PRE_PRIMARY'; // Default fallback
+
+      if (student?.classes?.class_name) {
+        const className = student.classes.class_name.toLowerCase();
+        
+        // Regex to extract numbers from class name (e.g., "Std 4 A" -> 4)
+        const match = className.match(/\d+/);
+        
+        if (className.includes('nursery') || className.includes('lkg') || className.includes('prefirst')) {
+          sectionId = 'PRE_PRIMARY';
+        } else if (match) {
+          const num = parseInt(match[0]);
+          if (num >= 1 && num <= 4) sectionId = 'PRIMARY';
+          else if (num >= 5 && num <= 8) sectionId = 'MIDDLE';
+          else if (num >= 9 && num <= 12) sectionId = 'HIGH';
+        }
+      }
+
+      // 2. Fetch the assigned teacher for this section from our new table
+      const { data: assignment } = await supabase
+        .from('ticket_assignments')
+        .select('teacher_id')
+        .eq('section_id', sectionId)
+        .single();
+
+      if (assignment?.teacher_id) {
+        assignedTeacherId = assignment.teacher_id;
+      }
+    } catch (err) {
+      console.warn("Auto-routing skipped. User may not be linked to a student.", err);
+    }
+    
+    // 3. Create the ticket with the assigned_to field populated
     const { data, error } = await supabase.from('support_tickets').insert([{
       created_by: currentUser.id,
       subject: newSubject,
       description: newDescription,
-      status: 'Open'
-    }]).select().single();
+      status: 'Open',
+      assigned_to: assignedTeacherId // Automatically routed!
+    }]).select('*, profiles!created_by(full_name, role)').single();
 
     if (!error && data) {
       setTickets([data, ...tickets]);
