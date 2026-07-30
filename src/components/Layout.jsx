@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import InstallAppButton from './InstallAppButton';
-
+import NotificationBell from './NotificationBell';
 
 import {
   BookOpen, Users, Calendar, Settings, LogOut, HelpCircle, AlertTriangle,
@@ -187,12 +187,17 @@ export default function Layout() {
           <BookOpen className="w-6 h-6 text-school-yellow" />
           <h1 className="font-bold text-lg tracking-wider">Portal</h1>
         </div>
-        <button
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="p-2 text-slate-300 hover:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-600"
-        >
-          {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-        </button>
+        <div className="flex items-center gap-3">
+          <div className="bg-white rounded-full flex items-center justify-center">
+            <NotificationBell />
+          </div>
+          <button
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="p-2 text-slate-300 hover:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-600"
+          >
+            {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
+        </div>
       </div>
 
       {/* --- THE SIDEBAR --- */}
@@ -202,11 +207,14 @@ export default function Layout() {
       `}>
 
         <div className="flex flex-col flex-1 overflow-hidden">
-          <div className="p-6 border-b border-slate-700 bg-school-navy hidden md:block shrink-0">
+          <div className="p-6 border-b border-slate-700 bg-school-navy hidden md:flex items-center justify-between shrink-0">
             <h1 className="text-2xl font-bold text-school-yellow flex items-center gap-2">
               <BookOpen className="w-6 h-6" />
               Portal
             </h1>
+            <div className="bg-white rounded-full shadow-sm flex items-center justify-center scale-90">
+              <NotificationBell />
+            </div>
           </div>
 
           <nav className="p-4 space-y-6 overflow-y-auto flex-1 custom-scrollbar">

@@ -8,7 +8,6 @@ export default function RequestStudentLeave() {
   const [children, setChildren] = useState([]);
   const [leaveHistory, setLeaveHistory] = useState([]);
   
-  // Form State
   const [selectedChildId, setSelectedChildId] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -22,7 +21,6 @@ export default function RequestStudentLeave() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    // 1. Fetch linked children
     const { data: kids } = await supabase
       .from('students')
       .select('id, full_name, classes(class_name)')
@@ -30,10 +28,9 @@ export default function RequestStudentLeave() {
       
     if (kids && kids.length > 0) {
       setChildren(kids);
-      setSelectedChildId(kids[0].id); // Auto-select first child
+      setSelectedChildId(kids[0].id); 
     }
 
-    // 2. Fetch past leave requests
     const { data: history } = await supabase
       .from('student_leaves')
       .select('*, students(full_name)')
@@ -73,11 +70,27 @@ export default function RequestStudentLeave() {
       setStatusMsg({ type: 'error', text: 'Failed to submit request. Please try again.' });
     } else {
       setStatusMsg({ type: 'success', text: 'Leave request submitted successfully to the administration.' });
+      
+      // --- 🚀 NEW TARGETED NOTIFICATION TRIGGER (Parent Submits Leave) ---
+      const { data: admins } = await supabase.from('profiles').select('id').in('role', ['ADMIN', 'HOS']);
+      if (admins && admins.length > 0) {
+        fetch('/api/notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userIds: admins.map(a => a.id),
+            title: 'New Student Leave Request',
+            message: `A new student leave request is pending approval.`,
+            url: '/leave-approvals'
+          })
+        }).catch(console.error);
+      }
+
       setStartDate('');
       setEndDate('');
       setReason('');
       setLeaveType('Sick Leave');
-      fetchParentData(); // Refresh history
+      fetchParentData(); 
       setTimeout(() => setStatusMsg({ type: '', text: '' }), 4000);
     }
     
@@ -108,7 +121,6 @@ export default function RequestStudentLeave() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* Left Column: Submission Form */}
         <div className="lg:col-span-1 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden h-fit">
           <div className="p-4 border-b border-slate-100 bg-slate-50">
             <h3 className="font-bold text-school-navy flex items-center gap-2">
@@ -158,7 +170,6 @@ export default function RequestStudentLeave() {
           </form>
         </div>
 
-        {/* Right Column: History */}
         <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-[600px]">
           <div className="p-4 border-b border-slate-100 bg-slate-50">
             <h3 className="font-bold text-school-navy">My Request History</h3>

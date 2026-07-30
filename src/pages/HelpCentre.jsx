@@ -127,6 +127,26 @@ export default function HelpCentre() {
       setActiveTicket(data);
       setNewSubject('');
       setNewDescription('');
+
+      // --- 🚀 NEW TARGETED NOTIFICATION TRIGGER ---
+      const notifyIds = [];
+      if (assignedTeacherId) notifyIds.push(assignedTeacherId);
+      
+      const { data: admins } = await supabase.from('profiles').select('id').in('role', ['ADMIN', 'HOS']);
+      if (admins) admins.forEach(a => notifyIds.push(a.id));
+
+      if (notifyIds.length > 0) {
+        fetch('/api/notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userIds: notifyIds,
+            title: 'New Support Ticket',
+            message: data.subject,
+            url: '/help-centre'
+          })
+        }).catch(console.error);
+      }
     }
     setIsSending(false);
   };
@@ -146,6 +166,32 @@ export default function HelpCentre() {
       setReplies([...replies, data]);
       setReplyText('');
       scrollToBottom();
+
+      // --- 🚀 NEW TARGETED NOTIFICATION TRIGGER ---
+      let targetIds = [];
+      if (currentUser.id === activeTicket.created_by) {
+          // Parent replied -> Notify assigned teacher & admins
+          if (activeTicket.assigned_to) targetIds.push(activeTicket.assigned_to);
+          const { data: admins } = await supabase.from('profiles').select('id').in('role', ['ADMIN', 'HOS']);
+          if (admins) admins.forEach(a => targetIds.push(a.id));
+      } else {
+          // Teacher/Admin replied -> Notify Parent
+          targetIds.push(activeTicket.created_by);
+      }
+
+      if (targetIds.length > 0) {
+        fetch('/api/notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userIds: targetIds,
+            title: 'New Reply on Ticket',
+            message: `Re: ${activeTicket.subject}`,
+            url: '/help-centre'
+          })
+        }).catch(console.error);
+      }
+
     } else {
       // Unmask the error!
       console.error("Reply Error:", error);

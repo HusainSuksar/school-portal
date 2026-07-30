@@ -13,10 +13,10 @@ export default function Attendance() {
   
   // Active Grid State
   const [selectedClassId, setSelectedClassId] = useState('');
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]); // Defaults to YYYY-MM-DD
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]); 
   
   const [students, setStudents] = useState([]);
-  const [attendanceMap, setAttendanceMap] = useState({}); // { student_id: 'Present' }
+  const [attendanceMap, setAttendanceMap] = useState({}); 
   
   // Lock & Override State
   const [isLocked, setIsLocked] = useState(false);
@@ -44,20 +44,15 @@ export default function Attendance() {
     
     if (!user) return;
     
-    // Fetch user profile to know if they are Admin
     const { data: profile } = await supabase.from('profiles').select('id, full_name, role').eq('id', user.id).single();
     setCurrentUser(profile);
 
-    // Fetch classes this teacher is assigned to (either as Subject Teacher or Class Teacher)
     if (profile.role === 'ADMIN') {
-      // Admins see all classes
       const { data: allClasses } = await supabase.from('classes').select('id, class_name, class_teacher_id').order('class_name');
       setAssignedClasses(allClasses || []);
     } else {
-      // Teachers see mapped classes
       const { data: mappings } = await supabase.from('class_subjects').select('class_id, classes(id, class_name, class_teacher_id)').eq('teacher_id', user.id);
       
-      // Deduplicate classes if they teach multiple subjects in the same class
       const uniqueClasses = [];
       const map = new Map();
       if (mappings) {
@@ -68,7 +63,6 @@ export default function Attendance() {
           }
         }
       }
-      // Also fetch classes where they are explicitly the Class Teacher, just in case they don't have subjects mapped yet
       const { data: homeroomClasses } = await supabase.from('classes').select('id, class_name, class_teacher_id').eq('class_teacher_id', user.id);
       if (homeroomClasses) {
         for (const hr of homeroomClasses) {
@@ -96,14 +90,12 @@ export default function Attendance() {
     const activeClass = assignedClasses.find(c => c.id === selectedClassId);
     if (!activeClass || !currentUser) return;
 
-    // 1. Fetch Students
     const { data: roster } = await supabase
       .from('students')
-      .select('id, full_name, its_number')
+      .select('id, full_name, its_number, parent_id')
       .eq('class_id', selectedClassId)
       .order('full_name');
 
-    // 2. Fetch Existing Attendance for this Date
     const { data: existingRecords } = await supabase
       .from('attendance')
       .select('student_id, status, recorded_by, profiles(full_name), updated_at')
@@ -113,7 +105,6 @@ export default function Attendance() {
     const newMap = {};
     
     if (existingRecords && existingRecords.length > 0) {
-      // ATTENDANCE ALREADY EXISTS (LOCKED MODE)
       existingRecords.forEach(record => {
         newMap[record.student_id] = record.status;
       });
@@ -125,10 +116,6 @@ export default function Attendance() {
       setLockInfo({ name: recorder, time: time });
       setIsLocked(true);
 
-      // Determine Override Rights:
-      // 1. You are the one who recorded it today
-      // 2. You are the Class Teacher for this class
-      // 3. You are an Admin
       if (
         currentUser.id === recorderId || 
         currentUser.id === activeClass.class_teacher_id || 
@@ -138,7 +125,6 @@ export default function Attendance() {
       }
 
     } else {
-      // NEW DAY: Default everyone to Present
       if (roster) {
         roster.forEach(student => {
           newMap[student.id] = 'Present';
@@ -179,10 +165,31 @@ export default function Attendance() {
     } else {
       setStatusMsg({ type: 'success', text: `Attendance successfully recorded for ${students.length} students.` });
       
-      // Relock the screen after saving
       setLockInfo({ name: currentUser.full_name, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
       setIsLocked(true);
-      setCanOverride(true); // They just saved it, so they can edit it
+      setCanOverride(true); 
+      
+      // --- 🚀 NEW TARGETED NOTIFICATION TRIGGER ---
+      // 1. Find all students marked 'Absent'
+      const absentStudents = students.filter(student => 
+        (attendanceMap[student.id] === 'Absent') && student.parent_id
+      );
+
+      // 2. Fire individual push notifications to their respective parents
+      if (absentStudents.length > 0) {
+        absentStudents.forEach(student => {
+          fetch('/api/notify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userIds: [student.parent_id],
+              title: 'Absence Alert',
+              message: `${student.full_name} was marked absent today (${new Date(selectedDate).toLocaleDateString()}).`,
+              url: '/' // Route parent back to dashboard
+            })
+          }).catch(console.error);
+        });
+      }
       
       setTimeout(() => setStatusMsg({ type: '', text: '' }), 4000);
     }
@@ -214,7 +221,6 @@ export default function Attendance() {
         </div>
       )}
 
-      {/* Workspace Controls */}
       <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row gap-4 shrink-0">
         <div className="flex-1">
           <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">1. Select Target Class</label>
@@ -235,18 +241,16 @@ export default function Attendance() {
           <input
             type="date"
             value={selectedDate}
-            max={new Date().toISOString().split('T')[0]} // Cannot take attendance for future dates
+            max={new Date().toISOString().split('T')[0]}
             onChange={(e) => setSelectedDate(e.target.value)}
             className="w-full bg-slate-50 border border-slate-300 text-school-navy font-bold py-3 px-4 rounded-xl focus:outline-none focus:border-indigo-500"
           />
         </div>
       </div>
 
-      {/* Grid Area */}
       {selectedClassId && (
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col flex-1 min-h-0">
           
-          {/* Header & Lock Status */}
           <div className="p-4 border-b border-slate-100 bg-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <h3 className="font-bold text-school-navy flex items-center gap-2">
               <Users className="w-5 h-5 text-slate-400" /> Class Roster ({students.length})
@@ -282,7 +286,6 @@ export default function Attendance() {
             </div>
           </div>
 
-          {/* Table */}
           <div className="overflow-y-auto flex-1 custom-scrollbar">
             {isLoading ? (
                <div className="py-12 flex justify-center"><div className="w-6 h-6 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div></div>

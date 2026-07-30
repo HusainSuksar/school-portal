@@ -18,28 +18,23 @@ export default function LeaveApprovals() {
     setIsLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
     
-    // Get Role
     const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
     if (profile) setUserRole(profile.role);
 
     const isAdminOrHOS = profile?.role === 'ADMIN' || profile?.role === 'HOS';
 
-    // 1. Fetch Staff Requests
     let staffQuery = supabase.from('leave_requests').select('*, profiles(full_name)');
-    // If not admin, only show their own staff requests
     if (!isAdminOrHOS) {
       staffQuery = staffQuery.eq('teacher_id', user.id);
     }
     const { data: staffLeaves } = await staffQuery;
 
-    // 2. Fetch Student Requests (Only Admins/HOS need to see this in the global queue)
     let studentLeaves = [];
     if (isAdminOrHOS) {
       const { data } = await supabase.from('student_leaves').select('*, students(full_name)');
       if (data) studentLeaves = data;
     }
 
-    // 3. Unify and Map the Data
     const unifiedQueue = [];
 
     if (staffLeaves) {
@@ -60,7 +55,6 @@ export default function LeaveApprovals() {
       }));
     }
 
-    // 4. Sort by Date (Newest first)
     unifiedQueue.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
     setRequests(unifiedQueue);
@@ -84,24 +78,59 @@ export default function LeaveApprovals() {
       setStartDate('');
       setEndDate('');
       setReason('');
-      fetchLeaveData(); // Refresh list
+      
+      // --- 🚀 NEW TARGETED NOTIFICATION TRIGGER (Staff Request) ---
+      const { data: admins } = await supabase.from('profiles').select('id').in('role', ['ADMIN', 'HOS']);
+      if (admins && admins.length > 0) {
+        fetch('/api/notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userIds: admins.map(a => a.id),
+            title: 'Staff Leave Request',
+            message: `A new leave request is pending approval.`,
+            url: '/leave-approvals'
+          })
+        }).catch(console.error);
+      }
+      
+      fetchLeaveData(); 
     }
     setIsSubmitting(false);
   };
 
-  // Smart Update: Uses the table_name injected during our fetch phase
   const updateStatus = async (id, tableName, newStatus) => {
-    const { error } = await supabase
+    const { data: updatedRecord, error } = await supabase
       .from(tableName)
       .update({ status: newStatus })
-      .eq('id', id);
+      .eq('id', id)
+      .select()
+      .single();
 
-    if (!error) fetchLeaveData(); // Refresh UI
+    if (!error) {
+      // --- 🚀 NEW TARGETED NOTIFICATION TRIGGER (Admin Action) ---
+      // Determine who to notify based on the table
+      const targetUserId = tableName === 'student_leaves' ? updatedRecord.parent_id : updatedRecord.teacher_id;
+      
+      if (targetUserId) {
+         fetch('/api/notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userIds: [targetUserId],
+            title: `Leave Request ${newStatus}`,
+            message: `Your leave request has been ${newStatus.toLowerCase()}.`,
+            url: tableName === 'student_leaves' ? '/request-leave' : '/leave-approvals'
+          })
+        }).catch(console.error);
+      }
+
+      fetchLeaveData(); 
+    }
   };
 
   if (isLoading) return <div className="flex justify-center p-12"><div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div></div>;
 
-  // 🔴 Prevent Parents from viewing this page entirely
   if (userRole === 'PARENT') {
     return (
       <div className="max-w-4xl mx-auto h-[60vh] flex flex-col items-center justify-center text-center">
@@ -128,7 +157,6 @@ export default function LeaveApprovals() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* Left Column: Submission Form (Hidden from Admins unless they also want to take leave) */}
         {!isAdmin && (
           <div className="lg:col-span-1 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden h-fit">
             <div className="p-4 border-b border-slate-100 bg-slate-50">
@@ -154,7 +182,6 @@ export default function LeaveApprovals() {
           </div>
         )}
 
-        {/* Right Column: The Request Queue */}
         <div className={`bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-[700px] ${isAdmin ? 'lg:col-span-3' : 'lg:col-span-2'}`}>
           <div className="p-4 border-b border-slate-100 bg-slate-50">
             <h3 className="font-bold text-school-navy">{isAdmin ? 'Master Approval Queue' : 'My Request History'}</h3>
@@ -182,7 +209,6 @@ export default function LeaveApprovals() {
                 </div>
                 
                 <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto mt-4 md:mt-0 pt-4 md:pt-0 border-t md:border-t-0 border-slate-100">
-                  {/* Status Badge */}
                   <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider whitespace-nowrap ${
                     req.status === 'Pending' ? 'bg-amber-100 text-amber-700' :
                     req.status === 'Approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
@@ -191,7 +217,6 @@ export default function LeaveApprovals() {
                     {req.status}
                   </span>
 
-                  {/* Admin Actions */}
                   {isAdmin && req.status === 'Pending' && (
                     <div className="flex gap-2 md:border-l border-slate-200 md:pl-3 w-full md:w-auto justify-end">
                       <button onClick={() => updateStatus(req.id, req.table_name, 'Approved')} className="p-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white rounded-lg transition-colors border border-emerald-200" title="Approve Request">

@@ -18,7 +18,7 @@ export default function LogPoints() {
       // 1. Fetch Students
       const { data: studentData } = await supabase
         .from('students')
-        .select('id, full_name, its_number, classes(class_name)')
+        .select('id, full_name, its_number, parent_id, classes(class_name)')
         .order('full_name');
       if (studentData) setStudents(studentData);
 
@@ -65,6 +65,21 @@ export default function LogPoints() {
       alert("Failed to log points.");
     } else {
       setSuccessMsg(`Successfully awarded ${logType} to ${selectedStudent.full_name}!`);
+
+      // --- 🚀 NEW TARGETED NOTIFICATION TRIGGER ---
+      if (selectedStudent.parent_id) {
+        fetch('/api/notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userIds: [selectedStudent.parent_id],
+            title: `Conduct Update: ${logType}`,
+            message: `${selectedStudent.full_name} received a ${logType} point for: ${selectedReason}.`,
+            url: '/' // Route parent back to dashboard
+          })
+        }).catch(console.error);
+      }
+
       setSelectedStudent(null);
       setSelectedReason('');
       setTimeout(() => setSuccessMsg(''), 3000);
