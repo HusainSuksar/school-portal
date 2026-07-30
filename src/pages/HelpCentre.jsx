@@ -146,6 +146,10 @@ export default function HelpCentre() {
       setReplies([...replies, data]);
       setReplyText('');
       scrollToBottom();
+    } else {
+      // Unmask the error!
+      console.error("Reply Error:", error);
+      alert(`Failed to send reply: ${error.message || 'Permission denied'}`);
     }
     setIsSending(false);
   };
