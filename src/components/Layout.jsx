@@ -9,7 +9,8 @@ import {
   BookOpen, Users, Calendar, Settings, LogOut, HelpCircle, AlertTriangle,
   CheckCircle2, Award, FileText, BookTemplate, BarChart2, Trophy, Search,
   PhoneCall, History, ShieldCheck, Book, Shield, Briefcase, Database, Inbox,
-  LifeBuoy, Activity, GraduationCap, Key, Lock, Link, CalendarClock, Menu, X, User
+  LifeBuoy, Activity, GraduationCap, Key, Lock, Link, CalendarClock, Menu, X, User,
+  CalendarDays // NEW ICON
 } from 'lucide-react';
 
 export default function Layout() {
@@ -279,6 +280,7 @@ export default function Layout() {
                 <div>
                   <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">HOS Control</p>
                   <div className="space-y-1">
+                    <NavLink to="/timetable-manager" className={navLinkClass}><CalendarDays className="w-4 h-4" /> Timetable Manager</NavLink> {/* NEW LINK */}
                     <NavLink to="/leave-approvals" className={navLinkClass}><ShieldCheck className="w-4 h-4" /> Leave Approvals</NavLink>
                     <NavLink to="/monitor-attendance" className={navLinkClass}><Users className="w-4 h-4" /> Monitor Attendance</NavLink>
                     <NavLink to="/school-log-book" className={navLinkClass}><Book className="w-4 h-4" /> School Log Book</NavLink>
