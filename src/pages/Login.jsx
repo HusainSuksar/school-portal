@@ -1,6 +1,6 @@
 // src/pages/Login.jsx
 import React, { useState } from 'react';
-import { Key, User, ArrowRight, ShieldCheck, AlertCircle } from 'lucide-react';
+import { Key, User, ArrowRight, AlertCircle, ShieldCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
@@ -50,20 +50,30 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen w-screen bg-slate-100 flex items-center justify-center p-4">
+    // 1. Full Screen Background Container with the photo
+    <div 
+      className="min-h-screen w-screen flex items-center justify-center p-4 relative"
+      style={{
+        backgroundImage: 'url("/MSB indore photo.jpg")',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundAttachment: 'fixed'
+      }}
+    >
+      {/* 2. Dark/Blurred Overlay to ensure the card stands out */}
+      <div className="absolute inset-0 bg-school-navy/80 backdrop-blur-sm z-0"></div>
       
-      <div className="max-w-4xl w-full bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row border border-slate-200/60">
+      {/* 3. The Login Card Container */}
+      <div className="max-w-4xl w-full bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row border border-white/20 relative z-10 animate-in fade-in zoom-in-95 duration-500">
         
         {/* Left Side: Academic Branding */}
         <div className="w-full md:w-5/12 bg-school-navy p-10 lg:p-12 text-white flex flex-col justify-between relative overflow-hidden">
           
-          {/* Subtle Background Elements for a modern touch */}
           <ShieldCheck className="absolute -bottom-16 -left-16 w-80 h-80 text-indigo-900 opacity-40 transform -rotate-12 pointer-events-none" />
           <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500 rounded-full mix-blend-multiply filter blur-[80px] opacity-30 pointer-events-none"></div>
           
           <div className="relative z-10 flex flex-col items-center md:items-start text-center md:text-left h-full justify-center md:justify-start">
             
-            {/* The MSB Crest Container */}
             <div className="bg-white/95 backdrop-blur-sm p-4 rounded-2xl shadow-xl mb-8 inline-block border border-white/20">
               <img 
                 src="/MSB INDORE logo.jpeg" 
