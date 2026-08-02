@@ -1,6 +1,6 @@
 // src/pages/HelpCentre.jsx
 import React, { useState, useEffect, useRef } from 'react';
-import { LifeBuoy, PlusCircle, MessageSquare, Send, Clock, User, CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react';
+import { LifeBuoy, PlusCircle, MessageSquare, Send, Clock, User, CheckCircle2, AlertTriangle, Loader2, ArrowLeft, ChevronDown } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 export default function HelpCentre() {
@@ -15,7 +15,9 @@ export default function HelpCentre() {
   const [replyText, setReplyText] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
+  
   const [currentUser, setCurrentUser] = useState(null);
+  const [userRole, setUserRole] = useState(''); // NEW: Track role for Admin features
   
   const chatEndRef = useRef(null);
 
@@ -31,19 +33,17 @@ export default function HelpCentre() {
     const { data: { user } } = await supabase.auth.getUser();
     setCurrentUser(user);
 
-    // Get user role to determine what they can see
+    // Get user role to determine what they can see and do
     const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+    if (profile) setUserRole(profile.role);
     
     let query = supabase.from('support_tickets').select('*, profiles!created_by(full_name, role)').order('created_at', { ascending: false });
 
     if (profile?.role === 'PARENT') {
-      // Parents only see tickets they created
       query = query.eq('created_by', user.id);
     } else if (profile?.role === 'TEACHER' || profile?.role === 'CLASS_TR') {
-      // Teachers see tickets assigned to them OR created by them
       query = query.or(`assigned_to.eq.${user.id},created_by.eq.${user.id}`);
     } 
-    // ADMIN and HOS see ALL tickets (no filter applied)
 
     const { data } = await query;
     if (data) setTickets(data);
@@ -65,29 +65,46 @@ export default function HelpCentre() {
     setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
   };
 
+  // --- NEW: Admin Status Update Function ---
+  const handleStatusChange = async (newStatus) => {
+    if (!activeTicket) return;
+    
+    const { error } = await supabase
+      .from('support_tickets')
+      .update({ status: newStatus })
+      .eq('id', activeTicket.id);
+      
+    if (!error) {
+      // Update local states immediately
+      setActiveTicket({ ...activeTicket, status: newStatus });
+      setTickets(tickets.map(t => t.id === activeTicket.id ? { ...t, status: newStatus } : t));
+      
+      // Target Notification to the parent that their ticket status changed
+      fetch('/api/notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userIds: [activeTicket.created_by],
+          title: 'Ticket Status Updated',
+          message: `Your ticket "${activeTicket.subject}" has been marked as ${newStatus}.`,
+          url: '/help-centre'
+        })
+      }).catch(console.error);
+    }
+  };
+
   const handleCreateTicket = async (e) => {
     e.preventDefault();
     setIsSending(true);
-    
     let assignedTeacherId = null;
 
     try {
-      // 1. Find the parent's child to get their class
-      const { data: student } = await supabase
-        .from('students')
-        .select('classes(class_name)')
-        .eq('parent_id', currentUser.id)
-        .limit(1)
-        .single();
-
-      let sectionId = 'PRE_PRIMARY'; // Default fallback
+      const { data: student } = await supabase.from('students').select('classes(class_name)').eq('parent_id', currentUser.id).limit(1).single();
+      let sectionId = 'PRE_PRIMARY'; 
 
       if (student?.classes?.class_name) {
         const className = student.classes.class_name.toLowerCase();
-        
-        // Regex to extract numbers from class name (e.g., "Std 4 A" -> 4)
         const match = className.match(/\d+/);
-        
         if (className.includes('nursery') || className.includes('lkg') || className.includes('prefirst')) {
           sectionId = 'PRE_PRIMARY';
         } else if (match) {
@@ -98,27 +115,18 @@ export default function HelpCentre() {
         }
       }
 
-      // 2. Fetch the assigned teacher for this section from our new table
-      const { data: assignment } = await supabase
-        .from('ticket_assignments')
-        .select('teacher_id')
-        .eq('section_id', sectionId)
-        .single();
-
-      if (assignment?.teacher_id) {
-        assignedTeacherId = assignment.teacher_id;
-      }
+      const { data: assignment } = await supabase.from('ticket_assignments').select('teacher_id').eq('section_id', sectionId).single();
+      if (assignment?.teacher_id) assignedTeacherId = assignment.teacher_id;
     } catch (err) {
-      console.warn("Auto-routing skipped. User may not be linked to a student.", err);
+      console.warn("Routing skipped.", err);
     }
     
-    // 3. Create the ticket with the assigned_to field populated
     const { data, error } = await supabase.from('support_tickets').insert([{
       created_by: currentUser.id,
       subject: newSubject,
       description: newDescription,
       status: 'Open',
-      assigned_to: assignedTeacherId // Automatically routed!
+      assigned_to: assignedTeacherId 
     }]).select('*, profiles!created_by(full_name, role)').single();
 
     if (!error && data) {
@@ -128,10 +136,8 @@ export default function HelpCentre() {
       setNewSubject('');
       setNewDescription('');
 
-      // --- 🚀 NEW TARGETED NOTIFICATION TRIGGER ---
       const notifyIds = [];
       if (assignedTeacherId) notifyIds.push(assignedTeacherId);
-      
       const { data: admins } = await supabase.from('profiles').select('id').in('role', ['ADMIN', 'HOS']);
       if (admins) admins.forEach(a => notifyIds.push(a.id));
 
@@ -167,15 +173,12 @@ export default function HelpCentre() {
       setReplyText('');
       scrollToBottom();
 
-      // --- 🚀 NEW TARGETED NOTIFICATION TRIGGER ---
       let targetIds = [];
       if (currentUser.id === activeTicket.created_by) {
-          // Parent replied -> Notify assigned teacher & admins
           if (activeTicket.assigned_to) targetIds.push(activeTicket.assigned_to);
           const { data: admins } = await supabase.from('profiles').select('id').in('role', ['ADMIN', 'HOS']);
           if (admins) admins.forEach(a => targetIds.push(a.id));
       } else {
-          // Teacher/Admin replied -> Notify Parent
           targetIds.push(activeTicket.created_by);
       }
 
@@ -191,9 +194,7 @@ export default function HelpCentre() {
           })
         }).catch(console.error);
       }
-
     } else {
-      // Unmask the error!
       console.error("Reply Error:", error);
       alert(`Failed to send reply: ${error.message || 'Permission denied'}`);
     }
@@ -210,6 +211,8 @@ export default function HelpCentre() {
     }
   };
 
+  const isAdmin = userRole === 'ADMIN' || userRole === 'HOS';
+
   if (isLoading) return <div className="max-w-5xl mx-auto h-96 flex items-center justify-center"><Loader2 className="w-8 h-8 text-indigo-500 animate-spin" /></div>;
 
   return (
@@ -225,8 +228,9 @@ export default function HelpCentre() {
       </div>
 
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-0">
-        {/* LEFT: Ticket History */}
-        <div className="lg:col-span-1 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-full">
+        
+        {/* LEFT: Ticket History (Hidden on mobile if viewing/creating a ticket) */}
+        <div className={`lg:col-span-1 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-col h-full ${activeTicket || isCreating ? 'hidden lg:flex' : 'flex'}`}>
           <div className="p-4 border-b border-slate-100 bg-slate-50"><h3 className="font-bold text-school-navy flex items-center gap-2">My Requests</h3></div>
           <div className="flex-1 overflow-y-auto divide-y divide-slate-100 custom-scrollbar">
             {tickets.length > 0 ? tickets.map(ticket => (
@@ -241,11 +245,18 @@ export default function HelpCentre() {
           </div>
         </div>
 
-        {/* RIGHT: Chat Thread or Creation Form */}
-        <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-full">
+        {/* RIGHT: Chat Thread or Creation Form (Hidden on mobile if NO ticket is active) */}
+        <div className={`lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-col h-full ${!activeTicket && !isCreating ? 'hidden lg:flex' : 'flex'}`}>
+          
           {isCreating ? (
             <form onSubmit={handleCreateTicket} className="p-6 flex flex-col h-full overflow-y-auto">
-              <h3 className="text-xl font-bold text-school-navy mb-6">Create New Ticket</h3>
+              <div className="flex items-center gap-3 mb-6">
+                <button type="button" onClick={() => setIsCreating(false)} className="lg:hidden p-2 -ml-2 text-slate-400 hover:text-school-navy bg-slate-50 rounded-lg">
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
+                <h3 className="text-xl font-bold text-school-navy">Create New Ticket</h3>
+              </div>
+              
               <div className="space-y-4 flex-1">
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Subject</label>
@@ -264,16 +275,46 @@ export default function HelpCentre() {
             </form>
           ) : activeTicket ? (
             <>
-              <div className="p-6 border-b border-slate-100 bg-slate-50 shrink-0">
-                <h3 className="text-xl font-bold text-school-navy mb-2">{activeTicket.subject}</h3>
-                <div className="flex items-center gap-3 text-sm font-medium text-slate-500">
-                  <span className={`px-2 py-0.5 rounded border text-[10px] font-bold uppercase tracking-wider ${getStatusBadge(activeTicket.status)}`}>{activeTicket.status}</span>
-                  <span className="flex items-center gap-1"><Clock className="w-4 h-4" /> {new Date(activeTicket.created_at).toLocaleString()}</span>
+              <div className="p-4 md:p-6 border-b border-slate-100 bg-slate-50 shrink-0">
+                <div className="flex items-start gap-3">
+                  {/* Mobile Back Button */}
+                  <button onClick={() => setActiveTicket(null)} className="lg:hidden mt-1 p-2 -ml-2 text-slate-400 hover:text-school-navy bg-white border border-slate-200 rounded-lg shadow-sm shrink-0">
+                    <ArrowLeft className="w-5 h-5" />
+                  </button>
+                  
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-lg md:text-xl font-bold text-school-navy mb-2 line-clamp-2">{activeTicket.subject}</h3>
+                    <div className="flex flex-wrap items-center gap-3 text-sm font-medium text-slate-500">
+                      
+                      {/* ADMIN STATUS DROPDOWN OR STATIC BADGE */}
+                      {isAdmin ? (
+                        <div className="relative">
+                          <select 
+                            value={activeTicket.status}
+                            onChange={(e) => handleStatusChange(e.target.value)}
+                            className={`appearance-none text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 pr-8 rounded border outline-none cursor-pointer transition-colors ${getStatusBadge(activeTicket.status)}`}
+                          >
+                            <option value="Open">Open</option>
+                            <option value="In Progress">In Progress</option>
+                            <option value="Resolved">Resolved</option>
+                            <option value="Closed">Closed</option>
+                          </select>
+                          <ChevronDown className="w-3 h-3 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-50" />
+                        </div>
+                      ) : (
+                        <span className={`px-2 py-0.5 rounded border text-[10px] font-bold uppercase tracking-wider ${getStatusBadge(activeTicket.status)}`}>
+                          {activeTicket.status}
+                        </span>
+                      )}
+
+                      <span className="flex items-center gap-1"><Clock className="w-4 h-4" /> {new Date(activeTicket.created_at).toLocaleString()}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50 custom-scrollbar">
-                <div className="flex flex-col items-start max-w-[85%]">
+              <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 bg-slate-50/50 custom-scrollbar">
+                <div className="flex flex-col items-start max-w-[90%] md:max-w-[85%]">
                   <span className="text-[10px] font-bold text-slate-400 mb-1 ml-1 uppercase tracking-wider">Original Request</span>
                   <div className="bg-white border border-slate-200 p-4 rounded-2xl rounded-tl-sm shadow-sm"><p className="text-sm text-slate-700 whitespace-pre-wrap">{activeTicket.description}</p></div>
                 </div>
@@ -282,8 +323,8 @@ export default function HelpCentre() {
                   const isMine = reply.user_id === currentUser?.id;
                   return (
                     <div key={reply.id} className={`flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
-                      <span className="text-[10px] font-bold text-slate-400 mb-1 mx-1 uppercase tracking-wider">{isMine ? 'You' : reply.profiles?.full_name + ' (Admin)'} • {new Date(reply.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                      <div className={`p-4 rounded-2xl max-w-[85%] shadow-sm ${isMine ? 'bg-indigo-600 text-white rounded-tr-sm' : 'bg-white border border-slate-200 text-slate-700 rounded-tl-sm'}`}>
+                      <span className="text-[10px] font-bold text-slate-400 mb-1 mx-1 uppercase tracking-wider">{isMine ? 'You' : reply.profiles?.full_name + (reply.profiles?.role === 'ADMIN' ? ' (Admin)' : '')} • {new Date(reply.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                      <div className={`p-4 rounded-2xl max-w-[90%] md:max-w-[85%] shadow-sm ${isMine ? 'bg-indigo-600 text-white rounded-tr-sm' : 'bg-white border border-slate-200 text-slate-700 rounded-tl-sm'}`}>
                         <p className="text-sm whitespace-pre-wrap">{reply.message}</p>
                       </div>
                     </div>
@@ -308,7 +349,7 @@ export default function HelpCentre() {
               )}
             </>
           ) : (
-            <div className="h-full flex flex-col items-center justify-center text-slate-400">
+            <div className="h-full flex flex-col items-center justify-center text-slate-400 p-8">
               <MessageSquare className="w-16 h-16 mb-4 opacity-20" />
               <h3 className="text-xl font-bold text-school-navy">Help Centre</h3>
               <p className="text-sm mt-2 max-w-sm text-center">Select an existing ticket or create a new one to get support.</p>
