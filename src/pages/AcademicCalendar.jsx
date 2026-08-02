@@ -59,12 +59,14 @@ export default function AcademicCalendar() {
       const localDate = new Date(gDate.getTime() - (offset * 60 * 1000));
       const dateString = localDate.toISOString().split('T')[0];
 
-      const dbEvent = eventsArr.find(e => e.date === dateString);
+      // Match with correct DB field: event_date
+      const dbEvent = eventsArr.find(e => e.event_date === dateString);
       
       const isWeekend = gDate.getDay() === 0 || gDate.getDay() === 6;
       let isHoliday = isWeekend;
 
-      if (dbEvent) isHoliday = dbEvent.is_holiday; 
+      // Match with correct DB field: event_type
+      if (dbEvent) isHoliday = dbEvent.event_type === 'Holiday'; 
 
       if (isHoliday) holidays++; else working++;
 
@@ -80,10 +82,14 @@ export default function AcademicCalendar() {
     if (!newEventDate || !newEventTitle) return;
     setIsSubmitting(true);
 
+    const { data: { user } } = await supabase.auth.getUser();
+
+    // Insert payload mapped exactly to your Supabase columns
     const { data, error } = await supabase.from('academic_calendar').insert([{
-      date: newEventDate,
-      title: newEventTitle,
-      is_holiday: newIsHoliday
+      event_date: newEventDate,
+      event_name: newEventTitle,
+      event_type: newIsHoliday ? 'Holiday' : 'Event',
+      created_by: user.id
     }]).select();
 
     if (!error && data && data.length > 0) {
@@ -92,8 +98,9 @@ export default function AcademicCalendar() {
       setNewEventTitle('');
       setNewIsHoliday(false);
     } else {
+      console.error(error);
       if (error?.code === '23505') alert("An event already exists on this specific date.");
-      else alert("Failed to add event. Please ensure you are an Admin.");
+      else alert(`Failed to add event: ${error?.message}`);
     }
     setIsSubmitting(false);
   };
@@ -184,8 +191,8 @@ export default function AcademicCalendar() {
                     </div>
                     <div className="mt-auto pt-2">
                       {dayObj.event && (
-                        <div className={`text-[10px] font-bold p-1.5 rounded line-clamp-2 leading-tight flex justify-between items-center ${dayObj.event.is_holiday ? 'bg-amber-100 text-amber-800 border-amber-200' : 'bg-indigo-100 text-indigo-800 border-indigo-200'}`}>
-                          <span>{dayObj.event.title}</span>
+                        <div className={`text-[10px] font-bold p-1.5 rounded line-clamp-2 leading-tight flex justify-between items-center ${dayObj.event.event_type === 'Holiday' ? 'bg-amber-100 text-amber-800 border-amber-200' : 'bg-indigo-100 text-indigo-800 border-indigo-200'}`}>
+                          <span>{dayObj.event.event_name}</span>
                           {isAdmin && <button onClick={() => handleDeleteEvent(dayObj.event.id)} className="text-red-500 opacity-0 group-hover:opacity-100"><Trash2 className="w-3 h-3" /></button>}
                         </div>
                       )}
@@ -202,8 +209,8 @@ export default function AcademicCalendar() {
                 <div key={dayObj.dateString} className="p-4 flex items-center gap-6">
                   <div className="w-16 text-center"><p className="text-xs font-bold text-slate-400 uppercase">{dayObj.gDate.toLocaleDateString('en-US', { weekday: 'short' })}</p><p className="text-2xl font-black text-school-navy">{dayObj.day}</p></div>
                   <div className="flex-1 pl-6 border-l border-slate-200 flex justify-between items-center">
-                    <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full uppercase ${dayObj.event.is_holiday ? 'bg-amber-100 text-amber-700' : 'bg-indigo-100 text-indigo-700'}`}>
-                      {dayObj.event.title}
+                    <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full uppercase ${dayObj.event.event_type === 'Holiday' ? 'bg-amber-100 text-amber-700' : 'bg-indigo-100 text-indigo-700'}`}>
+                      {dayObj.event.event_name}
                     </span>
                     {isAdmin && <button onClick={() => handleDeleteEvent(dayObj.event.id)} className="p-2 text-slate-400 hover:text-red-500 rounded-lg"><Trash2 className="w-4 h-4"/></button>}
                   </div>

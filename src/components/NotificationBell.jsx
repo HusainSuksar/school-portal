@@ -28,8 +28,9 @@ export default function NotificationBell() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      // FIXED: Unique channel ID prevents subscription conflicts
       channel = supabase
-        .channel('public:in_app_notifications')
+        .channel(`in_app_notifs_${user.id}`) 
         .on(
           'postgres_changes',
           { event: 'INSERT', schema: 'public', table: 'in_app_notifications', filter: `user_id=eq.${user.id}` },
