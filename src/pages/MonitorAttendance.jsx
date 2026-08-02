@@ -17,6 +17,11 @@ export default function MonitorAttendance() {
     percentage: 0
   });
 
+  // 🚀 FIXED: Added the missing useEffect to actually run the fetch function
+  useEffect(() => {
+    fetchAttendanceData();
+  }, [selectedDate]);
+
   async function fetchAttendanceData() {
       setIsLoading(true);
       

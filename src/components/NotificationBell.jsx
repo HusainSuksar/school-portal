@@ -28,9 +28,11 @@ export default function NotificationBell() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // FIXED: Unique channel ID prevents subscription conflicts
+      // 🚀 FIXED: Added random suffix to force a unique channel ID during React Hot-Reloads
+      const uniqueChannelId = `in_app_notifs_${user.id}_${Math.random().toString(36).substring(7)}`;
+
       channel = supabase
-        .channel(`in_app_notifs_${user.id}`) 
+        .channel(uniqueChannelId)
         .on(
           'postgres_changes',
           { event: 'INSERT', schema: 'public', table: 'in_app_notifications', filter: `user_id=eq.${user.id}` },
