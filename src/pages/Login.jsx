@@ -74,7 +74,7 @@ export default function Login() {
       {/* 1. Full-Screen Background Image Layer */}
       <div className="fixed inset-0 z-0">
         <img 
-          src="/MSB%20indore%20photo.jpg" 
+          src="/MSB.jpeg" 
           alt="MSB Indore Campus" 
           className="w-full h-full object-cover object-center scale-105 animate-in fade-in duration-1000"
         />
