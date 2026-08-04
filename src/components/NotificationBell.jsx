@@ -1,18 +1,36 @@
 // src/components/NotificationBell.jsx
 import React, { useState, useEffect, useRef } from 'react';
-import { Bell, CheckCircle2, Circle, Clock } from 'lucide-react';
+import { Bell, CheckCircle2, Circle, Clock, SmartphoneNfc } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
+
+// Helper function to convert VAPID base64 string
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
 
 export default function NotificationBell() {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
+  const [pushStatus, setPushStatus] = useState('default'); // 'default', 'granted', or 'denied'
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchNotifications();
+
+    // Check current push notification permission status safely
+    if ('Notification' in window) {
+      setPushStatus(Notification.permission);
+    }
 
     // Close dropdown if clicked outside
     const handleClickOutside = (event) => {
@@ -28,7 +46,6 @@ export default function NotificationBell() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // 🚀 FIXED: Added random suffix to force a unique channel ID during React Hot-Reloads
       const uniqueChannelId = `in_app_notifs_${user.id}_${Math.random().toString(36).substring(7)}`;
 
       channel = supabase
@@ -94,6 +111,41 @@ export default function NotificationBell() {
     setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
   };
 
+  // --- NEW: Inline Push Notification Enabler ---
+  const handleEnablePush = async () => {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      alert('Push notifications are not supported on this browser/device.');
+      return;
+    }
+
+    try {
+      const permission = await Notification.requestPermission();
+      setPushStatus(permission); // Update UI immediately
+      
+      if (permission !== 'granted') return;
+
+      const registration = await navigator.serviceWorker.ready;
+      const PUBLIC_VAPID_KEY = "BNlMSjHRveSNG46-s1f5lJt66IDt0Nyj171cxykcdgfxdX9CLFOKyhZ7PvFWFsPKjqg6D384pl9zq7TmtyT5vZo";
+
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
+      });
+
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+
+      await supabase.from('push_subscriptions').upsert({
+        user_id: user.id,
+        role: profile?.role || 'PARENT',
+        subscription: subscription.toJSON()
+      }, { onConflict: 'user_id' });
+
+    } catch (err) {
+      console.error('Subscription error:', err);
+    }
+  };
+
   return (
     <div className="relative" ref={dropdownRef}>
       {/* BELL ICON BUTTON */}
@@ -124,6 +176,23 @@ export default function NotificationBell() {
             )}
           </div>
           
+          {/* SMART PROMPT: Only shows if they haven't granted permission yet */}
+          {pushStatus === 'default' && (
+            <div className="bg-indigo-600 p-4 shrink-0 flex items-start gap-3 text-white">
+              <SmartphoneNfc className="w-6 h-6 text-indigo-200 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-bold">Stay Updated</p>
+                <p className="text-xs text-indigo-200 mt-0.5 leading-relaxed">Turn on push notifications to get instant alerts directly on your device screen.</p>
+                <button 
+                  onClick={handleEnablePush}
+                  className="mt-3 bg-white text-indigo-700 text-xs font-bold px-4 py-1.5 rounded-lg shadow-sm hover:bg-indigo-50 transition-colors"
+                >
+                  Enable Device Alerts
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="flex-1 overflow-y-auto custom-scrollbar">
             {notifications.length > 0 ? (
               <div className="divide-y divide-slate-100">

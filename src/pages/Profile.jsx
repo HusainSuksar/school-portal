@@ -27,84 +27,26 @@ export default function Profile() {
     }
     setIsLoading(false);
   };
-  
 
-// src/pages/Profile.jsx
+  const handleUpdateContact = async (e) => {
+    e.preventDefault();
+    setIsSaving(true);
+    setStatus({ type: '', msg: '' });
 
-// Helper function to convert VAPID base64 string
-function urlBase64ToUint8Array(base64String) {
-  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  return outputArray;
-}
-
-const handleEnablePush = async () => {
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-    alert('Push notifications are not supported on this browser/device.');
-    return;
-  }
-
-  try {
-    const permission = await Notification.requestPermission();
-    if (permission !== 'granted') {
-      alert('Notification permission was denied.');
-      return;
-    }
-
-    const registration = await navigator.serviceWorker.ready;
-
-    // Paste YOUR PUBLIC VAPID KEY generated in Step 2 here
-    const PUBLIC_VAPID_KEY = "BNlMSjHRveSNG46-s1f5lJt66IDt0Nyj171cxykcdgfxdX9CLFOKyhZ7PvFWFsPKjqg6D384pl9zq7TmtyT5vZo";
-
-    const subscription = await registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
-    });
-
-    // Save or update subscription in Supabase
-    const { error } = await supabase.from('push_subscriptions').upsert({
-      user_id: user.id,
-      role: profile.role || 'PARENT',
-      subscription: subscription.toJSON()
-    }, { onConflict: 'user_id' });
+    const { error } = await supabase.from('profiles').update({
+      phone_number: profile.phone_number,
+      personal_email: profile.personal_email,
+      address: profile.address
+    }).eq('id', user.id);
 
     if (!error) {
-      alert('Mobile push notifications enabled successfully!');
+      setStatus({ type: 'success', msg: 'Contact information updated successfully.' });
+      setTimeout(() => setStatus({ type: '', msg: '' }), 3000);
     } else {
-      console.error(error);
-      alert('Failed to save push subscription.');
+      setStatus({ type: 'error', msg: 'Failed to update contact info.' });
     }
-  } catch (err) {
-    console.error('Subscription error:', err);
-    alert('Error setting up notifications: ' + err.message);
-  }
-};
-
-// ✅ RESTORED FUNCTION HEADER
-const handleUpdateContact = async (e) => {
-  e.preventDefault();
-  setIsSaving(true);
-  setStatus({ type: '', msg: '' });
-
-  const { error } = await supabase.from('profiles').update({
-    phone_number: profile.phone_number,
-    personal_email: profile.personal_email,
-    address: profile.address
-  }).eq('id', user.id);
-
-  if (!error) {
-    setStatus({ type: 'success', msg: 'Contact information updated successfully.' });
-    setTimeout(() => setStatus({ type: '', msg: '' }), 3000);
-  } else {
-    setStatus({ type: 'error', msg: 'Failed to update contact info.' });
-  }
-  setIsSaving(false);
-};
+    setIsSaving(false);
+  };
 
   const handlePasswordChange = async (e) => {
     e.preventDefault();
@@ -118,7 +60,6 @@ const handleUpdateContact = async (e) => {
     if (!error) {
       setStatus({ type: 'success', msg: 'Password updated safely.' });
       setNewPassword(''); setConfirmPassword('');
-      // Mark requires_password_change as false if they just reset it
       await supabase.from('profiles').update({ requires_password_change: false }).eq('id', user.id);
     } else {
       setStatus({ type: 'error', msg: error.message });
@@ -134,11 +75,9 @@ const handleUpdateContact = async (e) => {
       const fileExt = file.name.split('.').pop();
       const fileName = `${user.id}.${fileExt}`;
 
-      // Upload to Storage
       let { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, file, { upsert: true });
       if (uploadError) throw uploadError;
 
-      // Get public URL and save to Profile
       const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(fileName);
       
       const { error: updateError } = await supabase.from('profiles').update({ avatar_url: urlData.publicUrl }).eq('id', user.id);
@@ -171,7 +110,6 @@ const handleUpdateContact = async (e) => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        {/* Left Column: Avatar & Role */}
         <div className="md:col-span-1 space-y-6">
           <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 text-center relative">
             <div className="relative w-32 h-32 mx-auto mb-4 group cursor-pointer">
@@ -193,10 +131,7 @@ const handleUpdateContact = async (e) => {
           </div>
         </div>
 
-        {/* Right Column: Forms */}
         <div className="md:col-span-2 space-y-6">
-          
-          {/* Contact Details */}
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
             <div className="p-4 border-b border-slate-100 bg-slate-50"><h3 className="font-bold text-school-navy">Contact Information</h3></div>
             <form onSubmit={handleUpdateContact} className="p-6 space-y-5">
@@ -219,26 +154,7 @@ const handleUpdateContact = async (e) => {
               </div>
             </form>
           </div>
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mt-6">
-  <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
-    <h3 className="font-bold text-school-navy flex items-center gap-2">Device Notifications</h3>
-  </div>
-  <div className="p-6 flex items-center justify-between">
-    <div>
-      <p className="text-sm font-bold text-slate-700">Receive Urgent Alerts</p>
-      <p className="text-xs text-slate-500 mt-1">Get notified on this device when important school announcements are broadcasted.</p>
-    </div>
-    <button 
-      type="button" 
-      onClick={handleEnablePush} 
-      className="bg-indigo-50 text-indigo-600 hover:bg-indigo-100 px-4 py-2 rounded-lg text-sm font-bold transition-colors border border-indigo-200"
-    >
-      Enable Alerts
-    </button>
-  </div>
-</div>
 
-          {/* Password Security */}
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
             <div className="p-4 border-b border-slate-100 bg-slate-50"><h3 className="font-bold text-school-navy flex items-center gap-2"><Lock className="w-4 h-4 text-slate-400"/> Change Password</h3></div>
             <form onSubmit={handlePasswordChange} className="p-6 space-y-5">
@@ -257,7 +173,6 @@ const handleUpdateContact = async (e) => {
               </div>
             </form>
           </div>
-
         </div>
       </div>
     </div>
