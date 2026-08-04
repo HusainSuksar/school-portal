@@ -78,7 +78,7 @@ export default function Login() {
           className="w-full h-full object-cover object-center scale-105 animate-in fade-in duration-1000"
         />
         {/* Warm ivory frosted glass overlay instead of dark navy */}
-        <div className="absolute inset-0 bg-amber-50/85 backdrop-blur-[8px]"></div>
+        <div className="absolute inset-0 bg-amber-50/85 backdrop-blur-[4px]"></div>
       </div>
 
       {/* 2. Elegant, Centered Ivory Card */}
