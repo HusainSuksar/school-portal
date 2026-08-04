@@ -92,7 +92,7 @@ export default function Login() {
             className="w-24 h-24 object-contain mix-blend-multiply mb-4" 
           />
           <h1 className="text-2xl font-bold text-school-navy tracking-tight text-center">MSB Indore</h1>
-          <p className="text-[10px] font-black tracking-[0.25em] text-school-yellow uppercase mt-1">Academic Portal</p>
+          <p className="text-2xl font-bold text-school-navy tracking-tight text-center">Academic Portal</p>
           
           <div className="mt-4 flex items-center gap-2 text-[11px] font-bold text-slate-400 uppercase tracking-widest">
             <span>{dates.gregorian}</span>
