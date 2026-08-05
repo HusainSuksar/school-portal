@@ -10,7 +10,7 @@ import {
   CheckCircle2, Award, FileText, BookTemplate, BarChart2, Trophy, Search,
   PhoneCall, History, ShieldCheck, Book, Shield, Briefcase, Database, Inbox,
   LifeBuoy, Activity, GraduationCap, Key, Lock, Link, CalendarClock, Menu, X, User,
-  CalendarDays, ChevronLeft, ChevronRight, Home, Command
+  CalendarDays, Home
 } from 'lucide-react';
 
 export default function Layout() {
@@ -19,9 +19,6 @@ export default function Layout() {
   
   // UX States
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isCollapsed, setIsCollapsed] = useState(false); // Zen Mode for Desktop
-  const [isSearchOpen, setIsSearchOpen] = useState(false); // Command Palette
-  const [searchQuery, setSearchQuery] = useState('');
 
   // Password Reset State
   const [newPassword, setNewPassword] = useState('');
@@ -52,24 +49,11 @@ export default function Layout() {
       }
     }
     initUser();
-
-    // Command Palette Keyboard Shortcut (Cmd+K or Ctrl+K)
-    const handleKeyDown = (e) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        setIsSearchOpen(prev => !prev);
-      }
-      if (e.key === 'Escape') setIsSearchOpen(false);
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Close mobile menu & command palette on route change
+  // Close mobile menu on route change
   useEffect(() => {
     setIsMobileMenuOpen(false);
-    setIsSearchOpen(false);
-    setSearchQuery('');
   }, [location.pathname]);
 
   const handleLogout = async () => {
@@ -99,7 +83,7 @@ export default function Layout() {
 
   // Dynamic styling for sidebar links
   const navLinkClass = ({ isActive }) =>
-    `flex items-center ${isCollapsed ? 'justify-center p-3' : 'gap-3 px-3 py-2.5'} rounded-xl transition-all duration-200 text-sm font-medium ${
+    `flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 text-sm font-medium ${
       isActive ? 'bg-indigo-600/10 text-indigo-400' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
     }`;
 
@@ -158,32 +142,6 @@ export default function Layout() {
         </div>
       )}
 
-      {/* --- GLOBAL COMMAND PALETTE (CMD+K) --- */}
-      {isSearchOpen && (
-        <div className="absolute inset-0 z-[90] bg-school-navy/60 backdrop-blur-sm flex items-start justify-center pt-[15vh] p-4 animate-in fade-in duration-200" onClick={() => setIsSearchOpen(false)}>
-          <div className="bg-white/95 backdrop-blur-xl w-full max-w-2xl rounded-2xl shadow-2xl border border-white overflow-hidden animate-in zoom-in-95" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center px-4 py-4 border-b border-slate-100">
-              <Search className="w-5 h-5 text-slate-400 mr-3" />
-              <input 
-                autoFocus 
-                value={searchQuery} 
-                onChange={(e) => setSearchQuery(e.target.value)} 
-                placeholder="Search students, pages, or commands..." 
-                className="flex-1 bg-transparent border-none text-lg text-school-navy placeholder:text-slate-400 focus:outline-none focus:ring-0" 
-              />
-              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 bg-slate-100 px-2 py-1 rounded">ESC</span>
-            </div>
-            <div className="p-2 bg-slate-50/50 min-h-[200px] max-h-[60vh] overflow-y-auto">
-              {/* Dummy results for visualization - would connect to real search in production */}
-              <p className="px-3 py-2 text-xs font-bold text-slate-400 uppercase tracking-wider mt-2">Quick Actions</p>
-              <button onClick={() => {navigate(isAdmin ? '/admin' : isTeacher ? '/teacher' : '/'); setIsSearchOpen(false)}} className="w-full text-left px-3 py-3 hover:bg-white hover:shadow-sm rounded-xl flex items-center gap-3 transition-all"><Home className="w-4 h-4 text-indigo-500"/> <span className="font-bold text-school-navy text-sm">Go to Dashboard</span></button>
-              <button onClick={() => {navigate('/help-centre'); setIsSearchOpen(false)}} className="w-full text-left px-3 py-3 hover:bg-white hover:shadow-sm rounded-xl flex items-center gap-3 transition-all"><LifeBuoy className="w-4 h-4 text-emerald-500"/> <span className="font-bold text-school-navy text-sm">Create Support Ticket</span></button>
-              {isStaff && <button onClick={() => {navigate('/student-lookup'); setIsSearchOpen(false)}} className="w-full text-left px-3 py-3 hover:bg-white hover:shadow-sm rounded-xl flex items-center gap-3 transition-all"><Search className="w-4 h-4 text-amber-500"/> <span className="font-bold text-school-navy text-sm">Lookup Student</span></button>}
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* --- SMARTPHONE TOP HEADER --- */}
       <div className="md:hidden bg-white px-4 py-3 flex items-center justify-between border-b border-slate-200 shrink-0 z-30 shadow-sm relative">
         <div className="flex items-center gap-3">
@@ -196,48 +154,34 @@ export default function Layout() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => setIsSearchOpen(true)} className="w-9 h-9 flex items-center justify-center text-slate-400 hover:bg-slate-50 rounded-full">
-            <Search className="w-5 h-5" />
-          </button>
           <div className="bg-slate-50 rounded-full flex items-center justify-center border border-slate-100">
             <NotificationBell />
           </div>
         </div>
       </div>
 
-      {/* --- DESKTOP ZEN-MODE SIDEBAR --- */}
-      <aside className={`
-        hidden md:flex flex-col bg-school-navy text-slate-300 border-r border-slate-800 transition-all duration-300 ease-in-out relative z-20 shrink-0
-        ${isCollapsed ? 'w-20' : 'w-72'}
-      `}>
-        {/* Zen Mode Toggle */}
-        <button 
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          className="absolute -right-3 top-8 bg-indigo-600 text-white p-1 rounded-full shadow-lg hover:bg-indigo-500 transition-transform hover:scale-110 z-50"
-        >
-          {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
-        </button>
-
+      {/* --- DESKTOP SIDEBAR --- */}
+      <aside className="hidden md:flex flex-col bg-school-navy text-slate-300 border-r border-slate-800 transition-all duration-300 ease-in-out relative z-20 shrink-0 w-72">
         <div className="flex flex-col flex-1 overflow-hidden">
-          <div className={`p-6 border-b border-slate-800/50 flex items-center shrink-0 h-20 ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
+          <div className="p-6 border-b border-slate-800/50 flex items-center shrink-0 h-20 justify-between">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 bg-school-yellow rounded-lg flex items-center justify-center shrink-0 shadow-sm">
                 <BookOpen className="w-5 h-5 text-school-navy" />
               </div>
-              {!isCollapsed && <h1 className="text-xl font-black text-white tracking-tight">Portal</h1>}
+              <h1 className="text-xl font-black text-white tracking-tight">Portal</h1>
             </div>
           </div>
 
-          <nav className={`p-4 space-y-6 overflow-y-auto flex-1 custom-scrollbar-dark ${isCollapsed ? 'px-2' : ''}`}>
+          <nav className="p-4 space-y-6 overflow-y-auto flex-1 custom-scrollbar-dark">
             
             {/* PARENT NAV */}
             {isParent && (
               <div>
-                {!isCollapsed && <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 px-3">Parent Portal</p>}
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 px-3">Parent Portal</p>
                 <div className="space-y-1">
-                  <NavLink to="/" className={navLinkClass} title="My Student"><Users className="w-5 h-5 shrink-0" /> {!isCollapsed && "My Student"}</NavLink>
-                  <NavLink to="/calendar" className={navLinkClass} title="Calendar"><Calendar className="w-5 h-5 shrink-0" /> {!isCollapsed && "Academic Calendar"}</NavLink>
-                  <NavLink to="/request-leave" className={navLinkClass} title="Request Leave"><CalendarClock className="w-5 h-5 shrink-0" /> {!isCollapsed && "Request Leave"}</NavLink>
+                  <NavLink to="/" className={navLinkClass} title="My Student"><Users className="w-5 h-5 shrink-0" /> My Student</NavLink>
+                  <NavLink to="/calendar" className={navLinkClass} title="Calendar"><Calendar className="w-5 h-5 shrink-0" /> Academic Calendar</NavLink>
+                  <NavLink to="/request-leave" className={navLinkClass} title="Request Leave"><CalendarClock className="w-5 h-5 shrink-0" /> Request Leave</NavLink>
                 </div>
               </div>
             )}
@@ -246,31 +190,31 @@ export default function Layout() {
             {isStaff && (
               <>
                 <div>
-                  {!isCollapsed && <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 px-3">Dashboards</p>}
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 px-3">Dashboards</p>
                   <div className="space-y-1">
-                    {isAdmin && <NavLink to="/admin" className={navLinkClass} title="Master Admin"><Activity className="w-5 h-5 shrink-0" /> {!isCollapsed && "Master Admin"}</NavLink>}
-                    <NavLink to="/teacher" className={navLinkClass} title="Teacher Desk"><BookOpen className="w-5 h-5 shrink-0" /> {!isCollapsed && "Teacher Desk"}</NavLink>
+                    {isAdmin && <NavLink to="/admin" className={navLinkClass} title="Master Admin"><Activity className="w-5 h-5 shrink-0" /> Master Admin</NavLink>}
+                    <NavLink to="/teacher" className={navLinkClass} title="Teacher Desk"><BookOpen className="w-5 h-5 shrink-0" /> Teacher Desk</NavLink>
                   </div>
                 </div>
 
                 <div>
-                  {!isCollapsed && <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 px-3">Academics</p>}
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 px-3">Academics</p>
                   <div className="space-y-1">
-                    <NavLink to="/calendar" className={navLinkClass} title="Calendar"><Calendar className="w-5 h-5 shrink-0" /> {!isCollapsed && "Academic Calendar"}</NavLink>
-                    <NavLink to="/lesson-plans" className={navLinkClass} title="Lesson Plans"><FileText className="w-5 h-5 shrink-0" /> {!isCollapsed && "Lesson Plans"}</NavLink>
-                    <NavLink to="/lesson-templates" className={navLinkClass} title="Lesson Templates"><BookTemplate className="w-5 h-5 shrink-0" /> {!isCollapsed && "Lesson Templates"}</NavLink>
-                    <NavLink to="/syllabus-status" className={navLinkClass} title="Syllabus Status"><BarChart2 className="w-5 h-5 shrink-0" /> {!isCollapsed && "Syllabus Status"}</NavLink>
-                    <NavLink to="/gradebook" className={navLinkClass} title="Gradebook"><GraduationCap className="w-5 h-5 shrink-0" /> {!isCollapsed && "Master Gradebook"}</NavLink>
-                    <NavLink to="/attendance" className={navLinkClass} title="Attendance"><Calendar className="w-5 h-5 shrink-0" /> {!isCollapsed && "Daily Attendance"}</NavLink>
+                    <NavLink to="/calendar" className={navLinkClass} title="Calendar"><Calendar className="w-5 h-5 shrink-0" /> Academic Calendar</NavLink>
+                    <NavLink to="/lesson-plans" className={navLinkClass} title="Lesson Plans"><FileText className="w-5 h-5 shrink-0" /> Lesson Plans</NavLink>
+                    <NavLink to="/lesson-templates" className={navLinkClass} title="Lesson Templates"><BookTemplate className="w-5 h-5 shrink-0" /> Lesson Templates</NavLink>
+                    <NavLink to="/syllabus-status" className={navLinkClass} title="Syllabus Status"><BarChart2 className="w-5 h-5 shrink-0" /> Syllabus Status</NavLink>
+                    <NavLink to="/gradebook" className={navLinkClass} title="Gradebook"><GraduationCap className="w-5 h-5 shrink-0" /> Master Gradebook</NavLink>
+                    <NavLink to="/attendance" className={navLinkClass} title="Attendance"><Calendar className="w-5 h-5 shrink-0" /> Daily Attendance</NavLink>
                   </div>
                 </div>
 
                 <div>
-                  {!isCollapsed && <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 px-3">Conduct</p>}
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 px-3">Conduct</p>
                   <div className="space-y-1">
-                    <NavLink to="/log-points" className={navLinkClass} title="Log Points"><Award className="w-5 h-5 shrink-0" /> {!isCollapsed && "Log Points"}</NavLink>
-                    <NavLink to="/class-summaries" className={navLinkClass} title="Class Summaries"><Trophy className="w-5 h-5 shrink-0" /> {!isCollapsed && "Class Summaries"}</NavLink>
-                    <NavLink to="/student-lookup" className={navLinkClass} title="Student Lookup"><Search className="w-5 h-5 shrink-0" /> {!isCollapsed && "Student Lookup"}</NavLink>
+                    <NavLink to="/log-points" className={navLinkClass} title="Log Points"><Award className="w-5 h-5 shrink-0" /> Log Points</NavLink>
+                    <NavLink to="/class-summaries" className={navLinkClass} title="Class Summaries"><Trophy className="w-5 h-5 shrink-0" /> Class Summaries</NavLink>
+                    <NavLink to="/student-lookup" className={navLinkClass} title="Student Lookup"><Search className="w-5 h-5 shrink-0" /> Student Lookup</NavLink>
                   </div>
                 </div>
               </>
@@ -278,10 +222,10 @@ export default function Layout() {
 
             {/* SHARED COMMUNICATION */}
             <div>
-              {!isCollapsed && <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 px-3">Communication</p>}
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 px-3">Communication</p>
               <div className="space-y-1">
-                <NavLink to="/communication" className={navLinkClass} title="Comm. Hub"><PhoneCall className="w-5 h-5 shrink-0" /> {!isCollapsed && "Comm. Hub"}</NavLink>
-                <NavLink to="/help-centre" className={navLinkClass} title="Help Centre"><LifeBuoy className="w-5 h-5 shrink-0" /> {!isCollapsed && "Help Centre"}</NavLink>
+                <NavLink to="/communication" className={navLinkClass} title="Comm. Hub"><PhoneCall className="w-5 h-5 shrink-0" /> Comm. Hub</NavLink>
+                <NavLink to="/help-centre" className={navLinkClass} title="Help Centre"><LifeBuoy className="w-5 h-5 shrink-0" /> Help Centre</NavLink>
               </div>
             </div>
 
@@ -289,25 +233,25 @@ export default function Layout() {
             {isAdmin && (
               <>
                 <div>
-                  {!isCollapsed && <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 px-3">HOS Control</p>}
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 px-3">HOS Control</p>
                   <div className="space-y-1">
-                    <NavLink to="/timetable-manager" className={navLinkClass} title="Timetable Manager"><CalendarDays className="w-5 h-5 shrink-0" /> {!isCollapsed && "Timetable Manager"}</NavLink>
-                    <NavLink to="/leave-approvals" className={navLinkClass} title="Leave Approvals"><ShieldCheck className="w-5 h-5 shrink-0" /> {!isCollapsed && "Leave Approvals"}</NavLink>
-                    <NavLink to="/monitor-attendance" className={navLinkClass} title="Monitor Attendance"><Users className="w-5 h-5 shrink-0" /> {!isCollapsed && "Monitor Attendance"}</NavLink>
-                    <NavLink to="/school-log-book" className={navLinkClass} title="School Log Book"><Book className="w-5 h-5 shrink-0" /> {!isCollapsed && "School Log Book"}</NavLink>
+                    <NavLink to="/timetable-manager" className={navLinkClass} title="Timetable Manager"><CalendarDays className="w-5 h-5 shrink-0" /> Timetable Manager</NavLink>
+                    <NavLink to="/leave-approvals" className={navLinkClass} title="Leave Approvals"><ShieldCheck className="w-5 h-5 shrink-0" /> Leave Approvals</NavLink>
+                    <NavLink to="/monitor-attendance" className={navLinkClass} title="Monitor Attendance"><Users className="w-5 h-5 shrink-0" /> Monitor Attendance</NavLink>
+                    <NavLink to="/school-log-book" className={navLinkClass} title="School Log Book"><Book className="w-5 h-5 shrink-0" /> School Log Book</NavLink>
                   </div>
                 </div>
                 <div>
-                  {!isCollapsed && <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 px-3">Administration</p>}
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 px-3">Administration</p>
                   <div className="space-y-1">
-                    <NavLink to="/manage-students" className={navLinkClass} title="Manage Students"><Shield className="w-5 h-5 shrink-0" /> {!isCollapsed && "Manage Students"}</NavLink>
-                    <NavLink to="/manage-teachers" className={navLinkClass} title="Manage Teachers"><Briefcase className="w-5 h-5 shrink-0" /> {!isCollapsed && "Manage Teachers"}</NavLink>
-                    <NavLink to="/its-audit" className={navLinkClass} title="ITS Audit"><Database className="w-5 h-5 shrink-0" /> {!isCollapsed && "ITS Audit"}</NavLink>
-                    <NavLink to="/support-inbox" className={navLinkClass} title="Support Inbox"><Inbox className="w-5 h-5 shrink-0" /> {!isCollapsed && "Support Inbox"}</NavLink>
-                    <NavLink to="/system-settings" className={navLinkClass} title="System Settings"><Settings className="w-5 h-5 shrink-0" /> {!isCollapsed && "System Settings"}</NavLink>
-                    <NavLink to="/staff-onboarding" className={navLinkClass} title="Bulk Staff Onboarding"><Users className="w-5 h-5 shrink-0" /> {!isCollapsed && "Staff Onboarding"}</NavLink>
-                    <NavLink to="/academic-mapping" className={navLinkClass} title="Academic Mapping"><BookOpen className="w-5 h-5 shrink-0" /> {!isCollapsed && "Academic Mapping"}</NavLink>
-                    <NavLink to="/parent-onboarding" className={navLinkClass} title="Parent Linking"><Link className="w-5 h-5 shrink-0" /> {!isCollapsed && "Parent Linking"}</NavLink>
+                    <NavLink to="/manage-students" className={navLinkClass} title="Manage Students"><Shield className="w-5 h-5 shrink-0" /> Manage Students</NavLink>
+                    <NavLink to="/manage-teachers" className={navLinkClass} title="Manage Teachers"><Briefcase className="w-5 h-5 shrink-0" /> Manage Teachers</NavLink>
+                    <NavLink to="/its-audit" className={navLinkClass} title="ITS Audit"><Database className="w-5 h-5 shrink-0" /> ITS Audit</NavLink>
+                    <NavLink to="/support-inbox" className={navLinkClass} title="Support Inbox"><Inbox className="w-5 h-5 shrink-0" /> Support Inbox</NavLink>
+                    <NavLink to="/system-settings" className={navLinkClass} title="System Settings"><Settings className="w-5 h-5 shrink-0" /> System Settings</NavLink>
+                    <NavLink to="/staff-onboarding" className={navLinkClass} title="Bulk Staff Onboarding"><Users className="w-5 h-5 shrink-0" /> Staff Onboarding</NavLink>
+                    <NavLink to="/academic-mapping" className={navLinkClass} title="Academic Mapping"><BookOpen className="w-5 h-5 shrink-0" /> Academic Mapping</NavLink>
+                    <NavLink to="/parent-onboarding" className={navLinkClass} title="Parent Linking"><Link className="w-5 h-5 shrink-0" /> Parent Linking</NavLink>
                   </div>
                 </div>
               </>
@@ -315,37 +259,31 @@ export default function Layout() {
 
             {/* MY WORKSPACE */}
             <div>
-              {!isCollapsed && <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 px-3">My Workspace</p>}
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 px-3">My Workspace</p>
               <div className="space-y-1">
-                <NavLink to="/my-history" className={navLinkClass} title="My History"><History className="w-5 h-5 shrink-0" /> {!isCollapsed && "My History"}</NavLink>
-                {isTeacher && <NavLink to="/leave-approvals" className={navLinkClass} title="Request Leave"><Calendar className="w-5 h-5 shrink-0" /> {!isCollapsed && "Request Leave"}</NavLink>}
+                <NavLink to="/my-history" className={navLinkClass} title="My History"><History className="w-5 h-5 shrink-0" /> My History</NavLink>
+                {isTeacher && <NavLink to="/leave-approvals" className={navLinkClass} title="Request Leave"><Calendar className="w-5 h-5 shrink-0" /> Request Leave</NavLink>}
               </div>
             </div>
           </nav>
         </div>
 
         {/* Bottom User Profile Section */}
-        <div className={`p-4 border-t border-slate-800/50 bg-school-navy shrink-0 transition-all ${isCollapsed ? 'items-center' : ''}`}>
-          {!isCollapsed ? (
-            <div className="flex items-center gap-3 mb-4 px-2">
-              <div className="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-white font-bold shrink-0 shadow-inner">
-                {profile.name !== 'Loading...' ? profile.name.charAt(0).toUpperCase() : '?'}
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm font-bold text-white truncate">{profile.name}</p>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-400 truncate">
-                  {profile.role ? profile.role.replace('_', ' ') : 'Loading...'}
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div className="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-white font-bold mx-auto mb-4" title={profile.name}>
+        <div className="p-4 border-t border-slate-800/50 bg-school-navy shrink-0 transition-all">
+          <div className="flex items-center gap-3 mb-4 px-2">
+            <div className="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-white font-bold shrink-0 shadow-inner">
               {profile.name !== 'Loading...' ? profile.name.charAt(0).toUpperCase() : '?'}
             </div>
-          )}
-          <NavLink to="/profile" className={navLinkClass} title="My Profile"><User className="w-5 h-5 shrink-0" /> {!isCollapsed && "My Profile"}</NavLink>
-          <button onClick={handleLogout} className={`flex w-full items-center ${isCollapsed ? 'justify-center p-3' : 'gap-3 px-3 py-2.5'} text-red-400 rounded-xl hover:bg-slate-800 transition-colors text-sm mt-1 font-bold`} title="Logout">
-            <LogOut className="w-5 h-5 shrink-0" /> {!isCollapsed && "Logout"}
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-white truncate">{profile.name}</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-400 truncate">
+                {profile.role ? profile.role.replace('_', ' ') : 'Loading...'}
+              </p>
+            </div>
+          </div>
+          <NavLink to="/profile" className={navLinkClass} title="My Profile"><User className="w-5 h-5 shrink-0" /> My Profile</NavLink>
+          <button onClick={handleLogout} className="flex w-full items-center gap-3 px-3 py-2.5 text-red-400 rounded-xl hover:bg-slate-800 transition-colors text-sm mt-1 font-bold" title="Logout">
+            <LogOut className="w-5 h-5 shrink-0" /> Logout
           </button>
         </div>
       </aside>
@@ -363,9 +301,7 @@ export default function Layout() {
               <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-full"><X className="w-6 h-6"/></button>
             </div>
             
-            {/* Simplified Mobile Menu list using identical structure to desktop, adapted for light theme */}
             <nav className="p-4 overflow-y-auto flex-1 space-y-6 custom-scrollbar">
-              {/* (We keep the same links here for mobile deep access, but styled for the light background) */}
                {isParent && (
                   <div>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 px-3">Parent Portal</p>
@@ -376,8 +312,6 @@ export default function Layout() {
                     </div>
                   </div>
                 )}
-                {/* Add standard staff/admin menus for mobile deep dive here if needed. 
-                    For brevity and mobile UX, the Bottom Nav handles the core 80% of use cases. */}
                  {isStaff && (
                    <div>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 px-3">Quick Access</p>
@@ -403,7 +337,7 @@ export default function Layout() {
       {/* --- MAIN CONTENT AREA --- */}
       <main className="flex-1 relative overflow-y-auto bg-slate-50/50 pb-20 md:pb-0">
         
-        {/* Desktop Header / Command Context */}
+        {/* Desktop Header Context */}
         <div className="hidden md:flex items-center justify-between p-6 pb-2 sticky top-0 bg-slate-50/80 backdrop-blur-md z-10">
            <div className="flex items-center text-sm font-bold text-slate-400 gap-2">
               <Home className="w-4 h-4" />
@@ -411,11 +345,6 @@ export default function Layout() {
               <span className="text-school-navy">{getPageTitle(location.pathname)}</span>
            </div>
            <div className="flex items-center gap-4">
-              <button onClick={() => setIsSearchOpen(true)} className="flex items-center gap-3 bg-white border border-slate-200 text-slate-400 px-4 py-2 rounded-xl text-xs font-bold hover:border-indigo-300 hover:text-indigo-500 shadow-sm transition-all group">
-                <Search className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                <span>Search Portal...</span>
-                <span className="bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded text-[10px] text-slate-500 ml-2">Cmd K</span>
-              </button>
               <div className="bg-white rounded-full flex items-center justify-center border border-slate-200 shadow-sm">
                 <NotificationBell />
               </div>
@@ -486,12 +415,6 @@ export default function Layout() {
               </NavLink>
             </>
           )}
-
-          {/* Persistent Search Icon for Mobile Bottom Nav */}
-          <button onClick={() => setIsSearchOpen(true)} className="flex flex-col items-center gap-1 p-2 w-16 text-slate-400 hover:text-indigo-600 transition-colors">
-             <Command className="w-6 h-6" />
-             <span className="text-[9px] font-bold uppercase tracking-wider">Search</span>
-          </button>
 
         </div>
       </div>
