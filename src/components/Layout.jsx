@@ -81,10 +81,16 @@ export default function Layout() {
     window.location.href = '/login';
   };
 
-  // Dynamic styling for sidebar links
+  // Dynamic styling for desktop sidebar links
   const navLinkClass = ({ isActive }) =>
     `flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 text-sm font-medium ${
       isActive ? 'bg-indigo-600/10 text-indigo-400' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+    }`;
+
+  // Dynamic styling for mobile menu links
+  const mobileLinkClass = ({ isActive }) => 
+    `flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-bold transition-all ${
+      isActive ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50'
     }`;
 
   const isParent = profile.role === 'PARENT';
@@ -302,33 +308,105 @@ export default function Layout() {
             </div>
             
             <nav className="p-4 overflow-y-auto flex-1 space-y-6 custom-scrollbar">
-               {isParent && (
+              
+              {/* PARENT NAV */}
+              {isParent && (
+                <div>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 px-3">Parent Portal</p>
+                  <div className="space-y-1">
+                    <NavLink to="/" className={mobileLinkClass}><Users className="w-5 h-5 shrink-0" /> My Student</NavLink>
+                    <NavLink to="/calendar" className={mobileLinkClass}><Calendar className="w-5 h-5 shrink-0" /> Academic Calendar</NavLink>
+                    <NavLink to="/request-leave" className={mobileLinkClass}><CalendarClock className="w-5 h-5 shrink-0" /> Request Leave</NavLink>
+                  </div>
+                </div>
+              )}
+
+              {/* STAFF SPECIFIC LINKS */}
+              {isStaff && (
+                <>
                   <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 px-3">Parent Portal</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 px-3">Dashboards</p>
                     <div className="space-y-1">
-                      <NavLink to="/" className={({isActive}) => `flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-bold ${isActive ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50'}`}><Users className="w-5 h-5 shrink-0" /> My Student</NavLink>
-                      <NavLink to="/calendar" className={({isActive}) => `flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-bold ${isActive ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50'}`}><Calendar className="w-5 h-5 shrink-0" /> Academic Calendar</NavLink>
-                      <NavLink to="/request-leave" className={({isActive}) => `flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-bold ${isActive ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50'}`}><CalendarClock className="w-5 h-5 shrink-0" /> Request Leave</NavLink>
+                      {isAdmin && <NavLink to="/admin" className={mobileLinkClass}><Activity className="w-5 h-5 shrink-0" /> Master Admin</NavLink>}
+                      <NavLink to="/teacher" className={mobileLinkClass}><BookOpen className="w-5 h-5 shrink-0" /> Teacher Desk</NavLink>
                     </div>
                   </div>
-                )}
-                 {isStaff && (
-                   <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 px-3">Quick Access</p>
+
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 px-3">Academics</p>
                     <div className="space-y-1">
-                       {isAdmin && <NavLink to="/admin" className={({isActive}) => `flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-bold ${isActive ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50'}`}><Activity className="w-5 h-5 shrink-0" /> Master Admin</NavLink>}
-                       <NavLink to="/teacher" className={({isActive}) => `flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-bold ${isActive ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50'}`}><BookOpen className="w-5 h-5 shrink-0" /> Teacher Desk</NavLink>
-                       <NavLink to="/student-lookup" className={({isActive}) => `flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-bold ${isActive ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50'}`}><Search className="w-5 h-5 shrink-0" /> Student Lookup</NavLink>
-                       <NavLink to="/calendar" className={({isActive}) => `flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-bold ${isActive ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50'}`}><Calendar className="w-5 h-5 shrink-0" /> Academic Calendar</NavLink>
-                       <NavLink to="/help-centre" className={({isActive}) => `flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-bold ${isActive ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50'}`}><LifeBuoy className="w-5 h-5 shrink-0" /> Help Centre</NavLink>
+                      <NavLink to="/calendar" className={mobileLinkClass}><Calendar className="w-5 h-5 shrink-0" /> Academic Calendar</NavLink>
+                      <NavLink to="/lesson-plans" className={mobileLinkClass}><FileText className="w-5 h-5 shrink-0" /> Lesson Plans</NavLink>
+                      <NavLink to="/lesson-templates" className={mobileLinkClass}><BookTemplate className="w-5 h-5 shrink-0" /> Lesson Templates</NavLink>
+                      <NavLink to="/syllabus-status" className={mobileLinkClass}><BarChart2 className="w-5 h-5 shrink-0" /> Syllabus Status</NavLink>
+                      <NavLink to="/gradebook" className={mobileLinkClass}><GraduationCap className="w-5 h-5 shrink-0" /> Master Gradebook</NavLink>
+                      <NavLink to="/attendance" className={mobileLinkClass}><Calendar className="w-5 h-5 shrink-0" /> Daily Attendance</NavLink>
                     </div>
-                   </div>
-                 )}
-                 <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 px-3 mt-6">Settings</p>
-                    <NavLink to="/profile" className={({isActive}) => `flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-bold ${isActive ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50'}`}><User className="w-5 h-5 shrink-0" /> My Profile</NavLink>
-                    <button onClick={handleLogout} className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-bold text-red-600 hover:bg-red-50"><LogOut className="w-5 h-5 shrink-0" /> Logout</button>
-                 </div>
+                  </div>
+
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 px-3">Conduct</p>
+                    <div className="space-y-1">
+                      <NavLink to="/log-points" className={mobileLinkClass}><Award className="w-5 h-5 shrink-0" /> Log Points</NavLink>
+                      <NavLink to="/class-summaries" className={mobileLinkClass}><Trophy className="w-5 h-5 shrink-0" /> Class Summaries</NavLink>
+                      <NavLink to="/student-lookup" className={mobileLinkClass}><Search className="w-5 h-5 shrink-0" /> Student Lookup</NavLink>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* SHARED COMMUNICATION */}
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 px-3">Communication</p>
+                <div className="space-y-1">
+                  <NavLink to="/communication" className={mobileLinkClass}><PhoneCall className="w-5 h-5 shrink-0" /> Comm. Hub</NavLink>
+                  <NavLink to="/help-centre" className={mobileLinkClass}><LifeBuoy className="w-5 h-5 shrink-0" /> Help Centre</NavLink>
+                </div>
+              </div>
+
+              {/* ADMIN STRICT CONTROL */}
+              {isAdmin && (
+                <>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 px-3">HOS Control</p>
+                    <div className="space-y-1">
+                      <NavLink to="/timetable-manager" className={mobileLinkClass}><CalendarDays className="w-5 h-5 shrink-0" /> Timetable Manager</NavLink>
+                      <NavLink to="/leave-approvals" className={mobileLinkClass}><ShieldCheck className="w-5 h-5 shrink-0" /> Leave Approvals</NavLink>
+                      <NavLink to="/monitor-attendance" className={mobileLinkClass}><Users className="w-5 h-5 shrink-0" /> Monitor Attendance</NavLink>
+                      <NavLink to="/school-log-book" className={mobileLinkClass}><Book className="w-5 h-5 shrink-0" /> School Log Book</NavLink>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 px-3">Administration</p>
+                    <div className="space-y-1">
+                      <NavLink to="/manage-students" className={mobileLinkClass}><Shield className="w-5 h-5 shrink-0" /> Manage Students</NavLink>
+                      <NavLink to="/manage-teachers" className={mobileLinkClass}><Briefcase className="w-5 h-5 shrink-0" /> Manage Teachers</NavLink>
+                      <NavLink to="/its-audit" className={mobileLinkClass}><Database className="w-5 h-5 shrink-0" /> ITS Audit</NavLink>
+                      <NavLink to="/support-inbox" className={mobileLinkClass}><Inbox className="w-5 h-5 shrink-0" /> Support Inbox</NavLink>
+                      <NavLink to="/system-settings" className={mobileLinkClass}><Settings className="w-5 h-5 shrink-0" /> System Settings</NavLink>
+                      <NavLink to="/staff-onboarding" className={mobileLinkClass}><Users className="w-5 h-5 shrink-0" /> Staff Onboarding</NavLink>
+                      <NavLink to="/academic-mapping" className={mobileLinkClass}><BookOpen className="w-5 h-5 shrink-0" /> Academic Mapping</NavLink>
+                      <NavLink to="/parent-onboarding" className={mobileLinkClass}><Link className="w-5 h-5 shrink-0" /> Parent Linking</NavLink>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* MY WORKSPACE */}
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 px-3">My Workspace</p>
+                <div className="space-y-1">
+                  <NavLink to="/my-history" className={mobileLinkClass}><History className="w-5 h-5 shrink-0" /> My History</NavLink>
+                  {isTeacher && <NavLink to="/leave-approvals" className={mobileLinkClass}><Calendar className="w-5 h-5 shrink-0" /> Request Leave</NavLink>}
+                </div>
+              </div>
+              
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 px-3 mt-6">Settings</p>
+                <NavLink to="/profile" className={mobileLinkClass}><User className="w-5 h-5 shrink-0" /> My Profile</NavLink>
+                <button onClick={handleLogout} className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-bold text-red-600 hover:bg-red-50"><LogOut className="w-5 h-5 shrink-0" /> Logout</button>
+              </div>
+
             </nav>
           </div>
         </div>
