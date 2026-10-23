@@ -1,9 +1,12 @@
 // src/pages/ParentOnboarding.jsx
-import React, { useState } from 'react';
-import { Users, UploadCloud, ShieldAlert, CheckCircle2, AlertTriangle, Link, UserPlus, FileText, Mail, Phone } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { UploadCloud, ShieldAlert, CheckCircle2, AlertTriangle, Link, UserPlus, Mail, Phone } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../lib/supabase';
 
 export default function ParentOnboarding() {
+  const [isAuthorized, setIsAuthorized] = useState(true);
+  const [isAuthChecking, setIsAuthChecking] = useState(true);
   const [activeTab, setActiveTab] = useState('single');
   const [isProcessing, setIsProcessing] = useState(false);
   const [status, setStatus] = useState({ type: '', msg: '' });
@@ -20,6 +23,30 @@ export default function ParentOnboarding() {
     parentPhone: ''
   });
 
+  useEffect(() => {
+    async function verifyAuth() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          setIsAuthorized(false);
+          return;
+        }
+        const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle();
+        if (profile?.role !== 'ADMIN' && profile?.role !== 'HOS') {
+          setIsAuthorized(false);
+          return;
+        }
+        setIsAuthorized(true);
+      } catch (err) {
+        console.error("Auth check failed:", err);
+        setIsAuthorized(false);
+      } finally {
+        setIsAuthChecking(false);
+      }
+    }
+    verifyAuth();
+  }, []);
+
   const getAdminClient = () => {
     return createClient(
       import.meta.env.VITE_SUPABASE_URL,
@@ -28,17 +55,18 @@ export default function ParentOnboarding() {
     );
   };
 
-  // Helper to fetch an existing parent or create a new one
-  // Helper to fetch an existing parent or create a new one
-  // Helper to fetch an existing parent or create a new one (Bulletproof Version)
   // Helper to fetch an existing parent or create a new one safely
   const getOrCreateParent = async (supabaseAdmin, parentIts, fatherName, parentEmail, parentPhone) => {
     // 1. Check if Parent already exists in profiles
-    const { data: existingProfile } = await supabaseAdmin
+    const { data: existingProfile, error: profileErr } = await supabaseAdmin
       .from('profiles')
       .select('id')
       .eq('its_number', parentIts)
       .maybeSingle();
+
+    if (profileErr) {
+      console.warn("Profile check warning:", profileErr.message);
+    }
 
     if (existingProfile) {
       return existingProfile.id;
@@ -77,6 +105,7 @@ export default function ParentOnboarding() {
         full_name: `${fatherName || 'Parent'} (Parent)`,
         role: 'PARENT',
         its_number: parentIts,
+        phone_number: parentPhone || null,
         requires_password_change: true
       });
       
@@ -98,12 +127,13 @@ export default function ParentOnboarding() {
       const supabaseAdmin = getAdminClient();
       
       // 1. Ensure the student actually exists first
-      const { data: student } = await supabaseAdmin
+      const { data: student, error: studentError } = await supabaseAdmin
         .from('students')
-        .select('id')
+        .select('id, full_name')
         .eq('its_number', formData.studentIts)
-        .single();
+        .maybeSingle();
         
+      if (studentError) throw studentError;
       if (!student) throw new Error(`Student with ITS ${formData.studentIts} not found in database.`);
 
       // 2. Get or Create the Parent Account
@@ -121,15 +151,15 @@ export default function ParentOnboarding() {
         .from('students')
         .update({
           parent_id: parentId,
-          father_name: formData.fatherName,
-          mother_name: formData.motherName,
+          father_name: formData.fatherName || null,
+          mother_name: formData.motherName || null,
           primary_parent_its: formData.parentIts
         })
         .eq('its_number', formData.studentIts);
 
       if (updateError) throw updateError;
 
-      setStatus({ type: 'success', msg: `Successfully linked Parent (${formData.parentIts}) to Student (${formData.studentIts}).` });
+      setStatus({ type: 'success', msg: `Successfully linked Parent (${formData.parentIts}) to Student ${student.full_name || formData.studentIts}.` });
       setFormData({ studentIts: '', fatherName: '', motherName: '', parentIts: '', parentEmail: '', parentPhone: '' });
 
     } catch (err) {
@@ -142,6 +172,7 @@ export default function ParentOnboarding() {
 
   const parseCSV = (text) => {
     const lines = text.split('\n').filter(line => line.trim() !== '');
+    if (lines.length === 0) return [];
     const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
     
     return lines.slice(1).map(line => {
@@ -223,14 +254,16 @@ export default function ParentOnboarding() {
               .from('students')
               .update({
                 parent_id: parentId,
-                father_name: row.father_name,
-                mother_name: row.mother_name,
+                father_name: row.father_name || null,
+                mother_name: row.mother_name || null,
                 primary_parent_its: row.parent_its
               })
               .eq('its_number', row.student_its);
               
             if (!error) successCount++;
             else errorCount++;
+          } else {
+            errorCount++;
           }
         } catch (rowErr) {
           console.error(`Failed on row student ${row.student_its}:`, rowErr);
@@ -253,6 +286,26 @@ export default function ParentOnboarding() {
       setIsProcessing(false);
     }
   };
+
+  if (isAuthChecking) {
+    return (
+      <div className="flex justify-center items-center py-20">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
+
+  if (!isAuthorized) {
+    return (
+      <div className="flex flex-col items-center justify-center p-12 bg-white rounded-xl shadow-sm border border-slate-200">
+        <ShieldAlert className="w-16 h-16 text-rose-500 mb-4 animate-bounce" />
+        <h2 className="text-xl font-bold text-slate-800 mb-2">Access Restricted</h2>
+        <p className="text-slate-500 text-sm max-w-md text-center">
+          Only School Administrators and Heads of School have permission to access the Parent Linking Engine.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-12">

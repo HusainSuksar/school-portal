@@ -42,12 +42,17 @@ export default function Attendance() {
     setIsLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
     
-    if (!user) return;
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
     
     const { data: profile } = await supabase.from('profiles').select('id, full_name, role').eq('id', user.id).single();
-    setCurrentUser(profile);
+    if (profile) setCurrentUser(profile);
 
-    if (profile.role === 'ADMIN') {
+    const isAdminOrHOS = profile?.role === 'ADMIN' || profile?.role === 'HOS';
+
+    if (isAdminOrHOS) {
       const { data: allClasses } = await supabase.from('classes').select('id, class_name, class_teacher_id').order('class_name');
       setAssignedClasses(allClasses || []);
     } else {
@@ -57,7 +62,7 @@ export default function Attendance() {
       const map = new Map();
       if (mappings) {
         for (const item of mappings) {
-          if (!map.has(item.class_id)) {
+          if (item.classes && !map.has(item.class_id)) {
             map.set(item.class_id, true);
             uniqueClasses.push(item.classes);
           }
@@ -88,7 +93,10 @@ export default function Attendance() {
     setLockInfo(null);
 
     const activeClass = assignedClasses.find(c => c.id === selectedClassId);
-    if (!activeClass || !currentUser) return;
+    if (!activeClass || !currentUser) {
+      setIsLoading(false);
+      return;
+    }
 
     const { data: roster } = await supabase
       .from('students')
@@ -116,10 +124,11 @@ export default function Attendance() {
       setLockInfo({ name: recorder, time: time });
       setIsLocked(true);
 
+      const isAdminOrHOS = currentUser.role === 'ADMIN' || currentUser.role === 'HOS';
       if (
         currentUser.id === recorderId || 
         currentUser.id === activeClass.class_teacher_id || 
-        currentUser.role === 'ADMIN'
+        isAdminOrHOS
       ) {
         setCanOverride(true);
       }
@@ -169,13 +178,11 @@ export default function Attendance() {
       setIsLocked(true);
       setCanOverride(true); 
       
-      // --- 🚀 NEW TARGETED NOTIFICATION TRIGGER ---
-      // 1. Find all students marked 'Absent'
+      // Targeted notification for absent students
       const absentStudents = students.filter(student => 
         (attendanceMap[student.id] === 'Absent') && student.parent_id
       );
 
-      // 2. Fire individual push notifications to their respective parents
       if (absentStudents.length > 0) {
         absentStudents.forEach(student => {
           fetch('/api/notify', {
@@ -185,7 +192,8 @@ export default function Attendance() {
               userIds: [student.parent_id],
               title: 'Absence Alert',
               message: `${student.full_name} was marked absent today (${new Date(selectedDate).toLocaleDateString()}).`,
-              url: '/' // Route parent back to dashboard
+              redirect_url: '/',
+              url: '/'
             })
           }).catch(console.error);
         });
@@ -310,10 +318,10 @@ export default function Attendance() {
                         </td>
                         <td className="p-4">
                           
-                          <div className={`flex justify-center gap-2 ${isLocked ? 'opacity-70 pointer-events-none' : ''}`}>
+                          <div className={`flex justify-center gap-1.5 ${isLocked ? 'opacity-70 pointer-events-none' : ''}`}>
                             <button
                               onClick={() => handleStatusChange(student.id, 'Present')}
-                              className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${
+                              className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
                                 status === 'Present' 
                                   ? 'bg-emerald-500 text-white shadow-sm' 
                                   : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
@@ -323,7 +331,7 @@ export default function Attendance() {
                             </button>
                             <button
                               onClick={() => handleStatusChange(student.id, 'Absent')}
-                              className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${
+                              className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
                                 status === 'Absent' 
                                   ? 'bg-red-500 text-white shadow-sm' 
                                   : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
@@ -333,13 +341,23 @@ export default function Attendance() {
                             </button>
                             <button
                               onClick={() => handleStatusChange(student.id, 'Late')}
-                              className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all flex items-center gap-1 ${
+                              className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1 ${
                                 status === 'Late' 
                                   ? 'bg-amber-500 text-white shadow-sm' 
                                   : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
                               }`}
                             >
                               <Clock className="w-3 h-3" /> Late
+                            </button>
+                            <button
+                              onClick={() => handleStatusChange(student.id, 'Leave')}
+                              className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
+                                status === 'Leave' || status === 'Excused'
+                                  ? 'bg-blue-600 text-white shadow-sm' 
+                                  : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                              }`}
+                            >
+                              Leave
                             </button>
                           </div>
 

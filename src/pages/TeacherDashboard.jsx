@@ -1,11 +1,13 @@
 // src/pages/TeacherDashboard.jsx
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { BookOpen, Users, CheckCircle2, Award, Clock, AlertTriangle, ChevronRight, Calendar, Activity } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
 export default function TeacherDashboard() {
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const [teacherName, setTeacherName] = useState('Teacher');
   const [stats, setStats] = useState({ tashjeeGiven: 0, tanbeehGiven: 0 });
@@ -199,7 +201,10 @@ export default function TeacherDashboard() {
 
         {/* 3. Quick Actions & Stats (Right Column) */}
         <div className="lg:col-span-1 space-y-6 flex flex-col h-full">
-          <div className="bg-gradient-to-br from-indigo-500 to-indigo-700 p-6 rounded-xl shadow-md flex flex-col justify-center text-white cursor-pointer hover:shadow-lg transition-shadow group shrink-0">
+          <div 
+            onClick={() => navigate('/attendance')}
+            className="bg-gradient-to-br from-indigo-500 to-indigo-700 p-6 rounded-xl shadow-md flex flex-col justify-center text-white cursor-pointer hover:shadow-lg transition-shadow group shrink-0"
+          >
             <div className="flex justify-between items-center mb-2">
               <CheckCircle2 className="w-6 h-6 text-indigo-200" />
               <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />

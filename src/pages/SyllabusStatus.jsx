@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 
 export default function SyllabusStatus() {
   const [userRole, setUserRole] = useState(null);
+  const [currentUserId, setCurrentUserId] = useState(null);
   const [trackers, setTrackers] = useState([]);
   const [classes, setClasses] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -18,6 +19,11 @@ export default function SyllabusStatus() {
   const fetchData = async () => {
     setIsLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
+    setCurrentUserId(user.id);
     
     // 1. Get Role
     const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
@@ -45,6 +51,10 @@ export default function SyllabusStatus() {
     e.preventDefault();
     setIsSubmitting(true);
     const { data: { user } } = await supabase.auth.getUser();
+    if (!user?.id) {
+      setIsSubmitting(false);
+      return;
+    }
 
     const { error } = await supabase.from('syllabus_tracker').insert([{
       class_id: classId,
@@ -57,6 +67,7 @@ export default function SyllabusStatus() {
       setClassId(''); setSubject(''); setTotalUnits(10);
       fetchData(); // Refresh UI
     } else {
+      console.error("Failed to initialize syllabus tracker:", error);
       if (error.code === '23505') {
         alert("A tracker for this subject in this class already exists.");
       } else {
@@ -66,23 +77,33 @@ export default function SyllabusStatus() {
     setIsSubmitting(false);
   };
 
-  const handleUpdateProgress = async (id, currentCompleted, total) => {
-    if (currentCompleted >= total) return; // Cannot exceed total
+  const handleUpdateProgress = async (tracker) => {
+    const isAdmin = userRole === 'ADMIN' || userRole === 'HOS';
+    if (!isAdmin && tracker.teacher_id !== currentUserId) {
+      alert("Only the assigned teacher or administrators can update syllabus progress.");
+      return;
+    }
+    if (tracker.completed_units >= tracker.total_units) return; // Cannot exceed total
     
     const { error } = await supabase
       .from('syllabus_tracker')
       .update({ 
-        completed_units: currentCompleted + 1,
+        completed_units: tracker.completed_units + 1,
         last_updated: new Date().toISOString()
       })
-      .eq('id', id);
+      .eq('id', tracker.id);
 
-    if (!error) fetchData();
+    if (!error) {
+      fetchData();
+    } else {
+      console.error("Failed to update progress:", error);
+      alert("Failed to update progress.");
+    }
   };
 
   if (isLoading) return <div className="max-w-6xl mx-auto h-96 flex items-center justify-center"><div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div></div>;
 
-  // 🔴 Prevent Parents from viewing this page
+  // Prevent Parents from viewing this page
   if (userRole === 'PARENT') {
     return (
       <div className="max-w-4xl mx-auto h-[60vh] flex flex-col items-center justify-center text-center">
@@ -92,6 +113,8 @@ export default function SyllabusStatus() {
       </div>
     );
   }
+
+  const isAdmin = userRole === 'ADMIN' || userRole === 'HOS';
 
   return (
     <div className="max-w-6xl mx-auto space-y-6 pb-12">
@@ -153,6 +176,7 @@ export default function SyllabusStatus() {
             {trackers.length > 0 ? trackers.map(tracker => {
               const percentage = Math.round((tracker.completed_units / tracker.total_units) * 100);
               const isComplete = percentage === 100;
+              const canUpdate = isAdmin || tracker.teacher_id === currentUserId;
               
               return (
                 <div key={tracker.id} className="border border-slate-200 rounded-xl p-5 hover:shadow-md transition-shadow">
@@ -160,16 +184,16 @@ export default function SyllabusStatus() {
                     <div>
                       <h4 className="font-bold text-lg text-school-navy">{tracker.subject}</h4>
                       <p className="text-sm font-medium text-slate-500 mt-1 flex items-center gap-2">
-                        <span className="bg-slate-100 px-2 py-0.5 rounded text-xs">{tracker.classes?.class_name}</span>
+                        <span className="bg-slate-100 px-2 py-0.5 rounded text-xs">{tracker.classes?.class_name || 'Class'}</span>
                         <span>•</span>
-                        <span>Taught by {tracker.profiles?.full_name}</span>
+                        <span>Taught by {tracker.profiles?.full_name || 'Staff Member'}</span>
                       </p>
                     </div>
                     
                     {/* Log Progress Button */}
-                    {!isComplete && (
+                    {!isComplete && canUpdate && (
                       <button 
-                        onClick={() => handleUpdateProgress(tracker.id, tracker.completed_units, tracker.total_units)}
+                        onClick={() => handleUpdateProgress(tracker)}
                         className="bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white border border-indigo-100 px-4 py-2 rounded-lg text-xs font-bold transition-colors"
                       >
                         + Log Unit

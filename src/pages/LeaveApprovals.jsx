@@ -17,21 +17,37 @@ export default function LeaveApprovals() {
   const fetchLeaveData = async () => {
     setIsLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
     
     const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
     if (profile) setUserRole(profile.role);
 
     const isAdminOrHOS = profile?.role === 'ADMIN' || profile?.role === 'HOS';
 
+    // 1. Fetch Staff Leaves
     let staffQuery = supabase.from('leave_requests').select('*, profiles(full_name)');
     if (!isAdminOrHOS) {
       staffQuery = staffQuery.eq('teacher_id', user.id);
     }
     const { data: staffLeaves } = await staffQuery;
 
+    // 2. Fetch Student Leaves: Admins/HOS see all; Homeroom teachers see their class's students
+    const { data: hrClasses } = await supabase.from('classes').select('id, class_name').eq('class_teacher_id', user.id);
+    const hrClassIds = hrClasses?.map(c => c.id) || [];
+    const isClassTeacher = hrClassIds.length > 0;
+
     let studentLeaves = [];
     if (isAdminOrHOS) {
-      const { data } = await supabase.from('student_leaves').select('*, students(full_name)');
+      const { data } = await supabase.from('student_leaves').select('*, students(full_name, class_id, classes(class_name))');
+      if (data) studentLeaves = data;
+    } else if (isClassTeacher) {
+      const { data } = await supabase
+        .from('student_leaves')
+        .select('*, students!inner(full_name, class_id, classes(class_name))')
+        .in('students.class_id', hrClassIds);
       if (data) studentLeaves = data;
     }
 
@@ -42,16 +58,18 @@ export default function LeaveApprovals() {
         ...req,
         display_name: req.profiles?.full_name || 'Staff Member',
         request_type: 'Staff Leave',
-        table_name: 'leave_requests'
+        table_name: 'leave_requests',
+        canApprove: isAdminOrHOS
       }));
     }
 
     if (studentLeaves) {
       studentLeaves.forEach(req => unifiedQueue.push({
         ...req,
-        display_name: req.students?.full_name || 'Student',
+        display_name: req.students?.full_name ? `${req.students.full_name} (${req.students.classes?.class_name || 'Class'})` : 'Student',
         request_type: req.leave_type || 'Student Leave',
-        table_name: 'student_leaves'
+        table_name: 'student_leaves',
+        canApprove: isAdminOrHOS || isClassTeacher
       }));
     }
 
@@ -69,6 +87,10 @@ export default function LeaveApprovals() {
     e.preventDefault();
     setIsSubmitting(true);
     const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setIsSubmitting(false);
+      return;
+    }
 
     const { error } = await supabase
       .from('leave_requests')
@@ -79,7 +101,6 @@ export default function LeaveApprovals() {
       setEndDate('');
       setReason('');
       
-      // --- 🚀 NEW TARGETED NOTIFICATION TRIGGER (Staff Request) ---
       const { data: admins } = await supabase.from('profiles').select('id').in('role', ['ADMIN', 'HOS']);
       if (admins && admins.length > 0) {
         fetch('/api/notify', {
@@ -88,13 +109,17 @@ export default function LeaveApprovals() {
           body: JSON.stringify({
             userIds: admins.map(a => a.id),
             title: 'Staff Leave Request',
-            message: `A new leave request is pending approval.`,
+            message: `A new staff leave request is pending approval.`,
+            redirect_url: '/leave-approvals',
             url: '/leave-approvals'
           })
         }).catch(console.error);
       }
       
       fetchLeaveData(); 
+    } else {
+      console.error("Failed to submit staff leave request:", error);
+      alert("Failed to submit request.");
     }
     setIsSubmitting(false);
   };
@@ -107,25 +132,27 @@ export default function LeaveApprovals() {
       .select()
       .single();
 
-    if (!error) {
-      // --- 🚀 NEW TARGETED NOTIFICATION TRIGGER (Admin Action) ---
-      // Determine who to notify based on the table
+    if (!error && updatedRecord) {
       const targetUserId = tableName === 'student_leaves' ? updatedRecord.parent_id : updatedRecord.teacher_id;
       
       if (targetUserId) {
-         fetch('/api/notify', {
+        fetch('/api/notify', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             userIds: [targetUserId],
             title: `Leave Request ${newStatus}`,
             message: `Your leave request has been ${newStatus.toLowerCase()}.`,
+            redirect_url: tableName === 'student_leaves' ? '/request-leave' : '/leave-approvals',
             url: tableName === 'student_leaves' ? '/request-leave' : '/leave-approvals'
           })
         }).catch(console.error);
       }
 
       fetchLeaveData(); 
+    } else {
+      console.error("Failed to update status:", error);
+      alert("Failed to update status.");
     }
   };
 
@@ -169,7 +196,7 @@ export default function LeaveApprovals() {
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-500 mb-1">End Date</label>
-                <input type="date" required value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full p-2 border rounded-lg text-sm" />
+                <input type="date" required value={endDate} min={startDate} onChange={(e) => setEndDate(e.target.value)} className="w-full p-2 border rounded-lg text-sm" />
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-500 mb-1">Reason</label>
@@ -184,7 +211,7 @@ export default function LeaveApprovals() {
 
         <div className={`bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-[700px] ${isAdmin ? 'lg:col-span-3' : 'lg:col-span-2'}`}>
           <div className="p-4 border-b border-slate-100 bg-slate-50">
-            <h3 className="font-bold text-school-navy">{isAdmin ? 'Master Approval Queue' : 'My Request History'}</h3>
+            <h3 className="font-bold text-school-navy">{isAdmin ? 'Master Approval Queue' : 'My Workspace & Approvals'}</h3>
           </div>
           
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -199,7 +226,7 @@ export default function LeaveApprovals() {
                     </span>
                   </div>
 
-                  {isAdmin && <p className="font-bold text-school-navy text-lg">{req.display_name}</p>}
+                  <p className="font-bold text-school-navy text-lg">{req.display_name}</p>
                   
                   <p className="text-sm font-bold text-slate-700 mt-1 flex items-center gap-1">
                     <CalendarClock className="w-4 h-4 text-slate-400" />
@@ -217,7 +244,7 @@ export default function LeaveApprovals() {
                     {req.status}
                   </span>
 
-                  {isAdmin && req.status === 'Pending' && (
+                  {req.canApprove && req.status === 'Pending' && (
                     <div className="flex gap-2 md:border-l border-slate-200 md:pl-3 w-full md:w-auto justify-end">
                       <button onClick={() => updateStatus(req.id, req.table_name, 'Approved')} className="p-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white rounded-lg transition-colors border border-emerald-200" title="Approve Request">
                         <CheckCircle2 className="w-5 h-5" />

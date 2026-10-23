@@ -1,9 +1,14 @@
 // src/pages/StaffOnboarding.jsx
-import React, { useState } from 'react';
-import { Users, UploadCloud, ShieldAlert, CheckCircle2, AlertTriangle, Database, UserPlus, Shield } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { UploadCloud, ShieldAlert, CheckCircle2, AlertTriangle, UserPlus, Shield } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../lib/supabase';
 
 export default function StaffOnboarding() {
+  // Authorization State
+  const [isAuthorized, setIsAuthorized] = useState(true);
+  const [isAuthChecking, setIsAuthChecking] = useState(true);
+
   // UI State
   const [activeTab, setActiveTab] = useState('single'); // 'single' or 'bulk'
   const [isProcessing, setIsProcessing] = useState(false);
@@ -19,6 +24,30 @@ export default function StaffOnboarding() {
     itsNumber: '',
     role: 'TEACHER'
   });
+
+  useEffect(() => {
+    async function verifyAuth() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          setIsAuthorized(false);
+          return;
+        }
+        const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle();
+        if (profile?.role !== 'ADMIN' && profile?.role !== 'HOS') {
+          setIsAuthorized(false);
+          return;
+        }
+        setIsAuthorized(true);
+      } catch (err) {
+        console.error("Auth check failed:", err);
+        setIsAuthorized(false);
+      } finally {
+        setIsAuthChecking(false);
+      }
+    }
+    verifyAuth();
+  }, []);
 
   // --- Common Admin Client Setup ---
   const getAdminClient = () => {
@@ -39,18 +68,37 @@ export default function StaffOnboarding() {
       const supabaseAdmin = getAdminClient();
       const proxyEmail = `${formData.itsNumber}@msb.local`;
 
-      // 1. Create the Auth Account
+      // 1. Create the Auth Account (or find existing)
       const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
         email: proxyEmail,
         password: '786110', // Default password for new accounts
         email_confirm: true
       });
 
-      if (authError) throw authError;
+      let userId = authData?.user?.id;
 
-      // 2. Inject the Profile
+      if (authError) {
+        if (authError.message.includes('already exists')) {
+          const { data: existingProfile } = await supabaseAdmin
+            .from('profiles')
+            .select('id')
+            .eq('its_number', formData.itsNumber)
+            .maybeSingle();
+          if (existingProfile) {
+            userId = existingProfile.id;
+          }
+        } else {
+          throw authError;
+        }
+      }
+
+      if (!userId) {
+        throw new Error("Could not resolve user ID for this account.");
+      }
+
+      // 2. Inject or Update the Profile
       const { error: profileError } = await supabaseAdmin.from('profiles').upsert({
-        id: authData.user.id,
+        id: userId,
         full_name: formData.fullName,
         role: formData.role,
         its_number: formData.itsNumber,
@@ -73,13 +121,30 @@ export default function StaffOnboarding() {
   // --- BULK CSV LOGIC ---
   const parseCSV = (text) => {
     const lines = text.split('\n').filter(line => line.trim() !== '');
+    if (lines.length === 0) return [];
     const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
     
     return lines.slice(1).map(line => {
-      const values = line.split(',');
+      const values = [];
+      let inQuotes = false;
+      let currentValue = '';
+
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        if (char === '"') {
+          inQuotes = !inQuotes; 
+        } else if (char === ',' && !inQuotes) {
+          values.push(currentValue);
+          currentValue = ''; 
+        } else {
+          currentValue += char;
+        }
+      }
+      values.push(currentValue); 
+
       const obj = {};
       headers.forEach((header, index) => {
-        obj[header] = values[index] ? values[index].trim() : '';
+        obj[header] = values[index] ? values[index].replace(/(^"|"$)/g, '').trim() : '';
       });
       return obj;
     });
@@ -115,41 +180,75 @@ export default function StaffOnboarding() {
 
       const supabaseAdmin = getAdminClient();
       let successCount = 0;
+      let errorCount = 0;
+      const validRoles = ['ADMIN', 'HOS', 'TEACHER', 'CLASS_TR'];
 
       for (const staff of staffList) {
-        const proxyEmail = `${staff.its_number}@msb.local`;
+        try {
+          if (!staff.its_number) continue;
 
-        const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-          email: proxyEmail,
-          password: '786110',
-          email_confirm: true
-        });
+          const proxyEmail = `${staff.its_number}@msb.local`;
+          const rawRole = (staff.role || '').trim().toUpperCase();
+          const finalRole = validRoles.includes(rawRole) ? rawRole : 'TEACHER';
 
-        if (authError) {
-          console.warn(`Skipping ${staff.its_number}:`, authError.message);
-          continue; 
-        }
+          const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+            email: proxyEmail,
+            password: '786110',
+            email_confirm: true
+          });
 
-        const { error: profileError } = await supabaseAdmin.from('profiles').upsert({
-          id: authData.user.id,
-          full_name: staff.full_name,
-          role: staff.role || 'TEACHER',
-          its_number: staff.its_number,
-          designation: staff.designation,
-          phone_number: staff.phone_number,
-          personal_email: staff.personal_email,
-          address: staff.address,
-          requires_password_change: true
-        });
+          let userId = authData?.user?.id;
 
-        if (profileError) {
-          console.error(`Failed to inject profile for ${staff.its_number}:`, profileError);
-        } else {
-          successCount++;
+          if (authError) {
+            if (authError.message.includes('already exists')) {
+              const { data: existingProfile } = await supabaseAdmin
+                .from('profiles')
+                .select('id')
+                .eq('its_number', staff.its_number)
+                .maybeSingle();
+              if (existingProfile) {
+                userId = existingProfile.id;
+              }
+            } else {
+              console.warn(`Auth creation failed for ${staff.its_number}:`, authError.message);
+              errorCount++;
+              continue;
+            }
+          }
+
+          if (!userId) {
+            errorCount++;
+            continue;
+          }
+
+          const { error: profileError } = await supabaseAdmin.from('profiles').upsert({
+            id: userId,
+            full_name: staff.full_name || 'Staff Member',
+            role: finalRole,
+            its_number: staff.its_number,
+            designation: staff.designation || null,
+            phone_number: staff.phone_number || null,
+            personal_email: staff.personal_email || null,
+            address: staff.address || null,
+            requires_password_change: true
+          });
+
+          if (profileError) {
+            console.error(`Failed to inject profile for ${staff.its_number}:`, profileError);
+            errorCount++;
+          } else {
+            successCount++;
+          }
+        } catch (rowErr) {
+          console.error(`Failed processing row for ${staff.its_number}:`, rowErr);
+          errorCount++;
         }
       }
 
-      setStatus({ type: 'success', msg: `Successfully onboarded ${successCount} faculty members.` });
+      setStatus({ 
+        type: errorCount === 0 ? 'success' : 'error', 
+        msg: `Successfully onboarded ${successCount} faculty members.${errorCount > 0 ? ` Encountered issues with ${errorCount} records.` : ''}` 
+      });
       setFile(null);
       setPreviewCount(0);
       
@@ -160,6 +259,26 @@ export default function StaffOnboarding() {
       setIsProcessing(false);
     }
   };
+
+  if (isAuthChecking) {
+    return (
+      <div className="flex justify-center items-center py-20">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
+
+  if (!isAuthorized) {
+    return (
+      <div className="flex flex-col items-center justify-center p-12 bg-white rounded-xl shadow-sm border border-slate-200">
+        <ShieldAlert className="w-16 h-16 text-rose-500 mb-4 animate-bounce" />
+        <h2 className="text-xl font-bold text-slate-800 mb-2">Access Restricted</h2>
+        <p className="text-slate-500 text-sm max-w-md text-center">
+          Only School Administrators and Heads of School have permission to access the Staff Onboarding Engine.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-12">
@@ -243,6 +362,7 @@ export default function StaffOnboarding() {
                 >
                   <option value="TEACHER">Subject Teacher</option>
                   <option value="CLASS_TR">Class Teacher</option>
+                  <option value="HOS">Head of School (HOS)</option>
                   <option value="ADMIN">Administrator</option>
                 </select>
               </div>
@@ -272,7 +392,7 @@ export default function StaffOnboarding() {
               <p className="font-mono bg-white p-2 rounded border border-indigo-200 text-xs">
                 its_number, full_name, designation, personal_email, phone_number, address, role
               </p>
-              <p className="mt-2 text-xs opacity-80">* Role should be 'TEACHER', 'CLASS_TR', or 'ADMIN'. If left blank, it defaults to 'TEACHER'.</p>
+              <p className="mt-2 text-xs opacity-80">* Role should be 'TEACHER', 'CLASS_TR', 'HOS', or 'ADMIN'. If left blank, it defaults to 'TEACHER'.</p>
             </div>
 
             <div className="border-2 border-dashed border-slate-300 rounded-xl p-10 text-center hover:bg-slate-50 transition-colors relative">

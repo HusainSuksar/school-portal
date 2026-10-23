@@ -22,14 +22,15 @@ export default function Profile() {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       setUser(user);
-      const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single();
-      if (data) setProfile(data);
+      const { data, error } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+      if (data && !error) setProfile(data);
     }
     setIsLoading(false);
   };
 
   const handleUpdateContact = async (e) => {
     e.preventDefault();
+    if (!user?.id) return;
     setIsSaving(true);
     setStatus({ type: '', msg: '' });
 
@@ -43,13 +44,14 @@ export default function Profile() {
       setStatus({ type: 'success', msg: 'Contact information updated successfully.' });
       setTimeout(() => setStatus({ type: '', msg: '' }), 3000);
     } else {
-      setStatus({ type: 'error', msg: 'Failed to update contact info.' });
+      setStatus({ type: 'error', msg: error.message || 'Failed to update contact info.' });
     }
     setIsSaving(false);
   };
 
   const handlePasswordChange = async (e) => {
     e.preventDefault();
+    if (!user?.id) return;
     if (newPassword !== confirmPassword) {
       return setStatus({ type: 'error', msg: 'New passwords do not match!' });
     }
@@ -60,7 +62,10 @@ export default function Profile() {
     if (!error) {
       setStatus({ type: 'success', msg: 'Password updated safely.' });
       setNewPassword(''); setConfirmPassword('');
-      await supabase.from('profiles').update({ requires_password_change: false }).eq('id', user.id);
+      const { error: profileErr } = await supabase.from('profiles').update({ requires_password_change: false }).eq('id', user.id);
+      if (profileErr) {
+        console.error("Failed to update requires_password_change:", profileErr);
+      }
     } else {
       setStatus({ type: 'error', msg: error.message });
     }
@@ -69,6 +74,7 @@ export default function Profile() {
 
   const uploadAvatar = async (event) => {
     try {
+      if (!user?.id) return;
       if (!event.target.files || event.target.files.length === 0) return;
       setIsSaving(true);
       const file = event.target.files[0];
@@ -87,7 +93,7 @@ export default function Profile() {
       setStatus({ type: 'success', msg: 'Profile photo updated!' });
       setTimeout(() => setStatus({ type: '', msg: '' }), 3000);
     } catch (error) {
-      alert('Error uploading avatar!');
+      alert(error.message || 'Error uploading avatar!');
     } finally {
       setIsSaving(false);
     }

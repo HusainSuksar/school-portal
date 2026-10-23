@@ -27,9 +27,14 @@ export default function SystemSettings() {
   useEffect(() => {
     async function fetchSettings() {
       const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setIsAuthorized(false);
+        setIsLoading(false);
+        return;
+      }
       
       const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-      if (profile?.role !== 'ADMIN') {
+      if (profile?.role !== 'ADMIN' && profile?.role !== 'HOS') {
         setIsAuthorized(false);
         setIsLoading(false);
         return;
@@ -74,6 +79,7 @@ export default function SystemSettings() {
       .eq('id', settingsId);
 
     if (error) {
+      console.error("Settings update error:", error);
       setStatusMsg({ type: 'error', text: 'Failed to update system settings.' });
     } else {
       setStatusMsg({ type: 'success', text: 'Master configurations updated successfully.' });
@@ -85,12 +91,12 @@ export default function SystemSettings() {
   // --- Dynamic Gamification Logic ---
   const handleAddRule = async (e) => {
     e.preventDefault();
-    if (!newRuleReason || newRulePoints < 1) return;
+    if (!newRuleReason.trim() || newRulePoints < 1) return;
     setIsAddingRule(true);
 
     const { data, error } = await supabase.from('point_rules').insert([{
       type: newRuleType,
-      reason: newRuleReason,
+      reason: newRuleReason.trim(),
       points: parseInt(newRulePoints)
     }]).select().single();
 
@@ -98,14 +104,22 @@ export default function SystemSettings() {
       setPointRules([...pointRules, data]);
       setNewRuleReason('');
       setNewRulePoints(1);
+    } else {
+      console.error("Failed to add point rule:", error);
+      alert("Failed to add rule.");
     }
     setIsAddingRule(false);
   };
 
   const handleDeleteRule = async (id) => {
     if (!window.confirm("Delete this rule from the system? Teachers will no longer be able to select it.")) return;
-    await supabase.from('point_rules').delete().eq('id', id);
-    setPointRules(pointRules.filter(r => r.id !== id));
+    const { error } = await supabase.from('point_rules').delete().eq('id', id);
+    if (!error) {
+      setPointRules(pointRules.filter(r => r.id !== id));
+    } else {
+      console.error("Failed to delete point rule:", error);
+      alert("Failed to delete rule.");
+    }
   };
 
   if (isLoading) return <div className="max-w-4xl mx-auto h-[60vh] flex items-center justify-center"><div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div></div>;
@@ -115,7 +129,7 @@ export default function SystemSettings() {
       <div className="max-w-4xl mx-auto h-[60vh] flex flex-col items-center justify-center text-center">
         <ShieldAlert className="w-16 h-16 text-red-500 mb-4 opacity-50" />
         <h2 className="text-3xl font-bold text-school-navy">Access Restricted</h2>
-        <p className="text-slate-500 mt-2">Global system configuration is restricted to Master Administrators.</p>
+        <p className="text-slate-500 mt-2">Global system configuration is restricted to Master Administrators and HOS.</p>
       </div>
     );
   }
@@ -148,53 +162,58 @@ export default function SystemSettings() {
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
           <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center gap-2">
             <BookOpen className="w-5 h-5 text-indigo-500" />
-            <h3 className="font-bold text-school-navy">Institutional Parameters</h3>
+            <h3 className="font-bold text-school-navy">Institutional Metadata</h3>
           </div>
           <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="md:col-span-2">
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Platform Name</label>
-              <input type="text" value={schoolName} onChange={(e) => setSchoolName(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500" />
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">School Official Name</label>
+              <input type="text" value={schoolName} onChange={(e) => setSchoolName(e.target.value)} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500" />
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Active Academic Year</label>
-              <select value={academicYear} onChange={(e) => setAcademicYear(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 cursor-pointer">
-                <option value="2025-2026">2025 - 2026</option>
-                <option value="2026-2027">2026 - 2027</option>
-                <option value="2027-2028">2027 - 2028</option>
-              </select>
+              <input type="text" value={academicYear} onChange={(e) => setAcademicYear(e.target.value)} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500" />
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Current Term</label>
-              <select value={currentTerm} onChange={(e) => setCurrentTerm(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 cursor-pointer">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Current Active Term</label>
+              <select value={currentTerm} onChange={(e) => setCurrentTerm(e.target.value)} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500">
                 <option value="Term 1">Term 1</option>
                 <option value="Term 2">Term 2</option>
                 <option value="Term 3">Term 3</option>
               </select>
             </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Grading Split Threshold (Class)</label>
+              <p className="text-xs text-slate-400 mb-2">Classes below this number use letter grades (A-F). Classes at or above use numeric marks.</p>
+              <input type="number" min="1" max="12" value={gradingThreshold} onChange={(e) => setGradingThreshold(e.target.value)} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500" />
+            </div>
           </div>
         </div>
 
-        {/* Dynamic Point Rules Engine */}
+        {/* Dynamic Point Rules System */}
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-          <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center gap-2">
-            <Award className="w-5 h-5 text-indigo-500" />
-            <h3 className="font-bold text-school-navy">Gamification & Point Rules</h3>
+          <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Award className="w-5 h-5 text-indigo-500" />
+              <h3 className="font-bold text-school-navy">Gamification Rules Matrix</h3>
+            </div>
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{pointRules.length} Active Rules</span>
           </div>
           
           <div className="p-6 grid grid-cols-1 lg:grid-cols-3 gap-8">
             
             {/* Left: Add Rule Form */}
-            <form onSubmit={handleAddRule} className="lg:col-span-1 space-y-4">
+            <form onSubmit={handleAddRule} className="space-y-4 lg:border-r border-slate-100 lg:pr-8">
+              <h4 className="font-bold text-school-navy text-sm">Add New Point Rule</h4>
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Rule Type</label>
-                <select value={newRuleType} onChange={(e) => setNewRuleType(e.target.value)} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold text-school-navy focus:outline-none focus:border-indigo-500">
-                  <option value="Tashjee">Tashjee (Positive)</option>
-                  <option value="Tanbeeh">Tanbeeh (Negative)</option>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Point Type</label>
+                <select value={newRuleType} onChange={(e) => setNewRuleType(e.target.value)} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500">
+                  <option value="Tashjee">Tashjee (Appreciative / Positive)</option>
+                  <option value="Tanbeeh">Tanbeeh (Behavioral / Deductive)</option>
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Reason</label>
-                <input type="text" required value={newRuleReason} onChange={(e) => setNewRuleReason(e.target.value)} placeholder="e.g. Excellent adab" className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500" />
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Reason Label</label>
+                <input type="text" required value={newRuleReason} onChange={(e) => setNewRuleReason(e.target.value)} placeholder="e.g. Uniform Excellence" className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500" />
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Points Awarded/Deducted</label>

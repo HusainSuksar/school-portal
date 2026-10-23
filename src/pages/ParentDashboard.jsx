@@ -35,7 +35,10 @@ export default function ParentDashboard() {
   const fetchFamilyData = async () => {
     setIsLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
 
     const { data: linkedStudents } = await supabase.from('students').select('id, full_name, its_number, father_name, mother_name, class_id, classes (class_name)').eq('parent_id', user.id).order('full_name');
     if (linkedStudents && linkedStudents.length > 0) {
@@ -122,7 +125,7 @@ export default function ParentDashboard() {
               <div className="flex justify-between items-start pt-2">
                 <div className="w-20 h-20 bg-white rounded-full p-1.5 -mt-10 shadow-sm border border-slate-100 relative z-10 shrink-0">
                   <div className="w-full h-full bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center text-2xl font-bold">
-                    {activeChild?.full_name.charAt(0)}
+                    {activeChild?.full_name?.charAt(0) || 'S'}
                   </div>
                 </div>
                 
@@ -180,7 +183,12 @@ export default function ParentDashboard() {
                   {attendanceStats.recent.map((record, idx) => (
                     <div key={idx} className="flex items-center justify-between p-2 rounded-lg bg-slate-50 border border-slate-100">
                       <span className="text-sm font-bold text-slate-600">{new Date(record.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>
-                      <span className={`text-xs font-bold px-2.5 py-1 rounded-md ${record.status === 'Present' ? 'bg-emerald-100 text-emerald-700' : record.status === 'Late' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>
+                      <span className={`text-xs font-bold px-2.5 py-1 rounded-md ${
+                        record.status === 'Present' ? 'bg-emerald-100 text-emerald-700' :
+                        record.status === 'Late' ? 'bg-amber-100 text-amber-700' :
+                        record.status === 'Leave' || record.status === 'Excused' ? 'bg-blue-100 text-blue-700' :
+                        'bg-red-100 text-red-700'
+                      }`}>
                         {record.status}
                       </span>
                     </div>
@@ -228,7 +236,7 @@ export default function ParentDashboard() {
                             <tbody className="divide-y divide-slate-100">
                               {termGrades.map((grade, idx) => (
                                 <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                                  <td className="p-3 text-sm font-bold text-school-navy">{grade.subjects.name}</td>
+                                  <td className="p-3 text-sm font-bold text-school-navy">{grade.subjects?.name || 'Unknown Subject'}</td>
                                   <td className="p-3 text-sm font-bold text-slate-700 text-right">
                                     {grade.letter_grade ? <span className="inline-flex items-center justify-center w-8 h-8 rounded bg-indigo-50 text-indigo-700 border border-indigo-100">{grade.letter_grade}</span> : <span className="text-lg">{grade.numeric_mark}%</span>}
                                   </td>

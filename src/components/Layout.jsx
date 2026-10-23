@@ -31,20 +31,22 @@ export default function Layout() {
 
   useEffect(() => {
     async function initUser() {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user }, error: userErr } = await supabase.auth.getUser();
 
-      if (user) {
-        const { data } = await supabase
+      if (user && !userErr) {
+        const { data, error: profileErr } = await supabase
           .from('profiles')
           .select('full_name, role, requires_password_change')
           .eq('id', user.id)
           .single();
 
-        if (data) {
-          setProfile({ name: data.full_name, role: data.role });
+        if (data && !profileErr) {
+          setProfile({ name: data.full_name || 'User', role: data.role || '' });
           if (data.requires_password_change) {
             setShowPasswordReset(true);
           }
+        } else {
+          setProfile({ name: user.email || 'User', role: '' });
         }
       }
     }
@@ -76,7 +78,12 @@ export default function Layout() {
     }
 
     const { data: { user } } = await supabase.auth.getUser();
-    await supabase.from('profiles').update({ requires_password_change: false }).eq('id', user.id);
+    if (user?.id) {
+      const { error: profileError } = await supabase.from('profiles').update({ requires_password_change: false }).eq('id', user.id);
+      if (profileError) {
+        console.error("Failed to update requires_password_change:", profileError);
+      }
+    }
     await supabase.auth.signOut();
     window.location.href = '/login';
   };

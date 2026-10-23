@@ -32,7 +32,10 @@ export default function Communication() {
   const fetchHubData = async () => {
     setIsLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
 
     // 1. Get User Profile
     const { data: profile } = await supabase.from('profiles').select('id, full_name, role').eq('id', user.id).single();
@@ -55,8 +58,7 @@ export default function Communication() {
       if (logs) setCommHistory(logs);
 
       // Fetch Students for Queue
-      let studentsQuery = supabase.from('students').select('id, full_name, classes(class_name), profiles(full_name, phone_number)');
-      
+      let students = [];
       if (!isAdmin) {
         // Find classes this teacher is responsible for
         const { data: mappings } = await supabase.from('class_subjects').select('class_id').eq('teacher_id', user.id);
@@ -67,15 +69,17 @@ export default function Communication() {
         hr?.forEach(h => classIds.add(h.id));
         
         if (classIds.size > 0) {
-          studentsQuery = studentsQuery.in('class_id', Array.from(classIds));
+          const { data: stData } = await supabase.from('students').select('id, full_name, classes(class_name), profiles(full_name, phone_number)').in('class_id', Array.from(classIds));
+          students = stData || [];
         } else {
-          studentsQuery = studentsQuery.eq('id', '00000000-0000-0000-0000-000000000000'); // Force empty if no classes
+          students = [];
         }
+      } else {
+        const { data: stData } = await supabase.from('students').select('id, full_name, classes(class_name), profiles(full_name, phone_number)');
+        students = stData || [];
       }
-      
-      const { data: students } = await studentsQuery;
 
-      if (students && logs) {
+      if (logs) {
         // Calculate the "Up Next" Queue
         const queue = students.map(student => {
           const studentLogs = logs.filter(l => l.student_id === student.id);
@@ -100,7 +104,7 @@ export default function Communication() {
   // --- ACTIONS ---
   const handleBroadcast = async (e) => {
     e.preventDefault();
-    if (!title || !message) return;
+    if (!title || !message || !currentUserProfile?.id) return;
     setIsSubmitting(true);
     
     // 1. Save to Supabase database (as usual)
@@ -112,7 +116,7 @@ export default function Communication() {
     }]);
 
     if (!error) { 
-      // 2. NEW: Call your Vercel Serverless Function to fire the Push Notifications
+      // 2. Call your Serverless Function to fire the Push Notifications
       try {
         await fetch('/api/broadcast', {
           method: 'POST',
@@ -128,15 +132,49 @@ export default function Communication() {
       setMessage(''); 
       setTargetAudience('ALL'); 
       fetchHubData(); 
+    } else {
+      console.error("Broadcast failed:", error);
+      alert("Failed to post announcement. Please try again.");
     }
     
     setIsSubmitting(false);
   };
 
+  const handleLogSubmit = async (e) => {
+    e.preventDefault();
+    if (!activeStudent || !currentUserProfile?.id || !logNotes.trim()) return;
+    setIsSubmitting(true);
+
+    const { error } = await supabase.from('communication_logs').insert([{
+      student_id: activeStudent.id,
+      teacher_id: currentUserProfile.id,
+      log_type: logType,
+      notes: logNotes.trim(),
+      logged_at: new Date().toISOString()
+    }]);
+
+    if (!error) {
+      setShowLogModal(false);
+      setActiveStudent(null);
+      setLogNotes('');
+      setLogType('Routine Call');
+      await fetchHubData();
+    } else {
+      console.error("Failed to insert communication log:", error);
+      alert("Failed to save communication log. Please try again.");
+    }
+    setIsSubmitting(false);
+  };
+
   const deleteAnnouncement = async (id) => {
     if (!window.confirm("Delete this announcement?")) return;
-    await supabase.from('announcements').delete().eq('id', id);
-    fetchHubData();
+    const { error } = await supabase.from('announcements').delete().eq('id', id);
+    if (error) {
+      console.error("Failed to delete announcement:", error);
+      alert("Failed to delete announcement.");
+    } else {
+      fetchHubData();
+    }
   };
 
   const openWhatsApp = (phone) => {

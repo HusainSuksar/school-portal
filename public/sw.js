@@ -1,7 +1,7 @@
 // public/sw.js
 
 // 1. FORCE IMMEDIATE TAKEOVER ON MOBILE
-self.addEventListener('install', (event) => {
+self.addEventListener('install', (_event) => {
   self.skipWaiting();
 });
 
@@ -19,7 +19,7 @@ self.addEventListener('push', (event) => {
     const options = {
       body: data.message || data.body || '',
       icon: '/pwa-192x192.png',
-      badge: '/favicon.ico',
+      badge: '/favicon.svg',
       vibrate: [200, 100, 200],
       data: { url: data.url || '/communication' }
     };

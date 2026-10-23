@@ -9,6 +9,7 @@ export default function ManageStudents() {
   const [classes, setClasses] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [isAuthorized, setIsAuthorized] = useState(true);
   
   // Form State: Enrollment
   const [itsNumber, setItsNumber] = useState('');
@@ -24,6 +25,20 @@ export default function ManageStudents() {
 
   const fetchData = async () => {
     setIsLoading(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setIsAuthorized(false);
+      setIsLoading(false);
+      return;
+    }
+
+    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+    if (profile?.role !== 'ADMIN' && profile?.role !== 'HOS') {
+      setIsAuthorized(false);
+      setIsLoading(false);
+      return;
+    }
+
     const { data: classData } = await supabase.from('classes').select('*').order('class_name');
     if (classData) setClasses(classData);
 
@@ -35,6 +50,16 @@ export default function ManageStudents() {
   useEffect(() => {
     fetchData();
   }, []);
+
+  if (!isLoading && !isAuthorized) {
+    return (
+      <div className="max-w-4xl mx-auto h-[60vh] flex flex-col items-center justify-center text-center">
+        <ShieldAlert className="w-16 h-16 text-red-500 mb-4 opacity-50" />
+        <h2 className="text-3xl font-bold text-school-navy">Access Restricted</h2>
+        <p className="text-slate-500">Student management is reserved for administrators and HOS.</p>
+      </div>
+    );
+  }
 
   const handleEnroll = async (e) => {
     e.preventDefault();
@@ -48,7 +73,7 @@ export default function ManageStudents() {
     }
 
     try {
-      const { error } = await supabase.from('students').insert([{ its_number: itsNumber.trim(), full_name: fullName, class_id: classId }]);
+      const { error } = await supabase.from('students').insert([{ its_number: itsNumber.trim(), full_name: fullName.trim(), class_id: classId }]);
       if (error) throw error;
 
       setStatusMsg({ type: 'success', text: `${fullName} has been successfully enrolled.` });
@@ -56,6 +81,7 @@ export default function ManageStudents() {
       fetchData();
       setTimeout(() => setStatusMsg({ type: '', text: '' }), 4000);
     } catch (error) {
+      console.error("Enrollment error:", error);
       setStatusMsg({ type: 'error', text: error.code === '23505' ? 'Student with this ITS already exists.' : 'Failed to enroll student.' });
     } finally {
       setIsSubmitting(false);
@@ -80,6 +106,7 @@ export default function ManageStudents() {
     const { error } = await supabase.from('students').update({ class_id: targetClass }).eq('class_id', sourceClass);
 
     if (error) {
+      console.error("Migration error:", error);
       setStatusMsg({ type: 'error', text: 'Failed to migrate students.' });
     } else {
       setStatusMsg({ type: 'success', text: `Successfully migrated ${studentsToMove} students.` });
@@ -93,10 +120,18 @@ export default function ManageStudents() {
   const handleDelete = async (id, name) => {
     if (!window.confirm(`Remove ${name} from the system? This deletes their attendance and behavior records.`)) return;
     const { error } = await supabase.from('students').delete().eq('id', id);
-    if (!error) fetchData();
+    if (!error) {
+      fetchData();
+    } else {
+      console.error("Delete student error:", error);
+      alert("Failed to remove student.");
+    }
   };
 
-  const filteredStudents = students.filter(s => s.full_name.toLowerCase().includes(searchTerm.toLowerCase()) || s.its_number.includes(searchTerm));
+  const filteredStudents = students.filter(s => 
+    (s.full_name?.toLowerCase().includes(searchTerm.toLowerCase())) || 
+    (s.its_number?.includes(searchTerm))
+  );
 
   return (
     <div className="max-w-6xl mx-auto space-y-6 pb-12">
@@ -161,6 +196,9 @@ export default function ManageStudents() {
                         </td>
                       </tr>
                     ))}
+                    {filteredStudents.length === 0 && (
+                      <tr><td colSpan="4" className="p-8 text-center text-slate-400">No students found.</td></tr>
+                    )}
                   </tbody>
                 </table>
               )}

@@ -1,6 +1,6 @@
 // src/pages/StudentLookup.jsx
 import React, { useState, useEffect } from 'react';
-import { Search, User, Award, CheckCircle2, AlertTriangle, Clock, ChevronRight, BookOpen, Star } from 'lucide-react';
+import { Search, User, Award, CheckCircle2, AlertTriangle, Clock, ChevronRight, BookOpen, Star, ShieldAlert } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 // Gamification Logic Helper
@@ -13,6 +13,7 @@ const getRankBadge = (netPoints) => {
 };
 
 export default function StudentLookup() {
+  const [userRole, setUserRole] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -20,6 +21,17 @@ export default function StudentLookup() {
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [studentData, setStudentData] = useState({ attendancePct: 0, tashjee: 0, tanbeeh: 0, recentLogs: [], rank: null });
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
+
+  useEffect(() => {
+    async function checkRole() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+        if (profile) setUserRole(profile.role);
+      }
+    }
+    checkRole();
+  }, []);
 
   useEffect(() => {
     const delayDebounceFn = setTimeout(async () => {
@@ -32,6 +44,16 @@ export default function StudentLookup() {
     }, 300);
     return () => clearTimeout(delayDebounceFn);
   }, [searchTerm]);
+
+  if (userRole === 'PARENT') {
+    return (
+      <div className="max-w-4xl mx-auto h-[60vh] flex flex-col items-center justify-center text-center">
+        <ShieldAlert className="w-16 h-16 text-red-500 mb-4 opacity-50" />
+        <h2 className="text-3xl font-bold text-school-navy">Staff Portal Only</h2>
+        <p className="text-slate-500">Student lookup directory is reserved for faculty and administration.</p>
+      </div>
+    );
+  }
 
   const loadStudentProfile = async (student) => {
     setSelectedStudent(student);
@@ -94,7 +116,7 @@ export default function StudentLookup() {
                 <div key={student.id} onClick={() => loadStudentProfile(student)} className="p-4 flex items-center justify-between hover:bg-indigo-50 cursor-pointer transition-colors group">
                   <div>
                     <p className="font-bold text-school-navy">{student.full_name}</p>
-                    <p className="text-xs text-slate-500 font-medium">{student.its_number} • {student.classes?.class_name}</p>
+                    <p className="text-xs text-slate-500 font-medium">{student.its_number} • {student.classes?.class_name || 'Class'}</p>
                   </div>
                   <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-indigo-500 transition-colors" />
                 </div>
@@ -109,18 +131,18 @@ export default function StudentLookup() {
           <div className="bg-school-navy rounded-2xl p-8 text-white shadow-lg relative overflow-hidden flex items-center justify-between gap-6">
             <div className="flex items-center gap-6 relative z-10">
               <div className="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center border-4 border-slate-700 relative shadow-inner">
-                <span className="text-2xl font-bold text-slate-300">{selectedStudent.full_name.charAt(0)}</span>
+                <span className="text-2xl font-bold text-slate-300">{selectedStudent.full_name?.charAt(0) || 'S'}</span>
               </div>
               <div>
                 <h2 className="text-3xl font-bold">{selectedStudent.full_name}</h2>
                 <p className="text-slate-300 font-medium mt-1 flex items-center gap-2">
                   <span className="bg-slate-800/50 px-2 py-1 rounded text-xs border border-slate-700">{selectedStudent.its_number}</span>
-                  {selectedStudent.classes?.class_name}
+                  {selectedStudent.classes?.class_name || 'Class'}
                 </p>
               </div>
             </div>
             
-            {/* dynamic Rank Badge Render */}
+            {/* Dynamic Rank Badge Render */}
             {studentData.rank && (
               <div className={`relative z-10 flex flex-col items-center justify-center px-6 py-3 rounded-xl border-2 ${studentData.rank.color}`}>
                 <Star className={`w-8 h-8 mb-1 ${studentData.rank.icon} fill-current`} />
@@ -176,7 +198,7 @@ export default function StudentLookup() {
                           </div>
                           <div>
                             <p className="font-bold text-school-navy">{log.reason}</p>
-                            <p className="text-xs text-slate-400 font-medium">Logged by {log.profiles?.full_name} • {new Date(log.logged_at).toLocaleDateString()}</p>
+                            <p className="text-xs text-slate-400 font-medium">Logged by {log.profiles?.full_name || 'Staff'} • {new Date(log.logged_at).toLocaleDateString()}</p>
                           </div>
                         </div>
                         <span className={`text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider ${log.log_type === 'Tashjee' ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : 'bg-red-50 text-red-600 border border-red-200'}`}>

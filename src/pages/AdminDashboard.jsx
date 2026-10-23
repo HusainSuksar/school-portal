@@ -15,7 +15,7 @@ export default function AdminDashboard() {
   });
   const [recentLogs, setRecentLogs] = useState([]);
 
-  // --- New States for Ticket Routing ---
+  // --- States for Ticket Routing ---
   const [teachers, setTeachers] = useState([]);
   const [routingRules, setRoutingRules] = useState([]);
   const [isUpdatingRouting, setIsUpdatingRouting] = useState(false);
@@ -28,6 +28,11 @@ export default function AdminDashboard() {
     async function fetchGlobalStats() {
       try {
         const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          setIsAuthorized(false);
+          setIsLoading(false);
+          return;
+        }
         
         // Security Checkpoint: Verify they are an ADMIN or HOS
         const { data: profile } = await supabase
@@ -92,11 +97,12 @@ export default function AdminDashboard() {
           attendanceToday: attPercentage
         });
 
-        // 5. Fetch all teachers for the dropdowns
+        // 5. Fetch all eligible staff for ticket routing dropdowns (teachers, class teachers, admins, and HOS)
         const { data: teacherList } = await supabase
           .from('profiles')
-          .select('id, full_name')
-          .in('role', ['TEACHER', 'CLASS_TR']);
+          .select('id, full_name, role')
+          .in('role', ['TEACHER', 'CLASS_TR', 'HOS', 'ADMIN'])
+          .order('full_name');
         if (teacherList) setTeachers(teacherList);
 
         // 6. Fetch current routing rules
@@ -118,15 +124,17 @@ export default function AdminDashboard() {
 
   const handleUpdateRouting = async (sectionId, teacherId) => {
     setIsUpdatingRouting(true);
+    const sanitizedTeacherId = teacherId ? teacherId : null;
     const { error } = await supabase
       .from('ticket_assignments')
-      .update({ teacher_id: teacherId, updated_at: new Date().toISOString() })
+      .update({ teacher_id: sanitizedTeacherId, updated_at: new Date().toISOString() })
       .eq('section_id', sectionId);
     
     if (!error) {
       alert('Routing rule updated successfully!');
-      setRoutingRules(prev => prev.map(rule => rule.section_id === sectionId ? { ...rule, teacher_id: teacherId } : rule));
+      setRoutingRules(prev => prev.map(rule => rule.section_id === sectionId ? { ...rule, teacher_id: sanitizedTeacherId } : rule));
     } else {
+      console.error("Failed to update routing rule:", error);
       alert('Failed to update routing rule.');
     }
     setIsUpdatingRouting(false);
@@ -168,35 +176,35 @@ export default function AdminDashboard() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col border-b-4 border-b-indigo-500">
+        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col">
           <div className="flex justify-between items-start mb-4">
             <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center">
               <Users className="w-5 h-5 text-indigo-600" />
             </div>
           </div>
-          <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Total Population</h3>
+          <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Total Enrolment</h3>
           <p className="text-3xl font-bold text-school-navy">{globalStats.totalStudents} <span className="text-lg text-slate-400 font-medium">Students</span></p>
         </div>
 
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col border-b-4 border-b-emerald-500">
+        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col">
           <div className="flex justify-between items-start mb-4">
             <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center">
               <CheckCircle2 className="w-5 h-5 text-emerald-600" />
             </div>
           </div>
-          <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Global Attendance</h3>
-          <p className="text-3xl font-bold text-school-navy">{globalStats.attendanceToday}%</p>
+          <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Attendance Today</h3>
+          <p className="text-3xl font-bold text-school-navy">{globalStats.attendanceToday}% <span className="text-lg text-slate-400 font-medium">Present</span></p>
         </div>
 
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col border-b-4 border-b-amber-500">
+        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col">
           <div className="flex justify-between items-start mb-4">
             <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center">
               <TrendingUp className="w-5 h-5 text-amber-600" />
             </div>
           </div>
-          <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Points Logged Today</h3>
-          <div className="flex items-baseline gap-2">
-            <p className="text-3xl font-bold text-emerald-600">+{globalStats.tashjeeToday}</p>
+          <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Today's Points</h3>
+          <div className="flex items-center gap-3">
+            <p className="text-xl font-bold text-emerald-600">+{globalStats.tashjeeToday}</p>
             <span className="text-slate-300">/</span>
             <p className="text-xl font-bold text-red-500">-{globalStats.tanbeehToday}</p>
           </div>
@@ -244,7 +252,7 @@ export default function AdminDashboard() {
                   >
                     <option value="">-- Unassigned --</option>
                     {teachers.map(t => (
-                      <option key={t.id} value={t.id}>{t.full_name}</option>
+                      <option key={t.id} value={t.id}>{t.full_name} ({t.role})</option>
                     ))}
                   </select>
                 </div>
@@ -276,7 +284,7 @@ export default function AdminDashboard() {
                     </div>
                     <div className="pt-2">
                       <p className="text-sm font-bold text-slate-700">
-                        {log.profiles?.full_name} awarded {log.log_type} to {log.students?.full_name}
+                        {log.profiles?.full_name || 'Staff'} awarded {log.log_type} to {log.students?.full_name || 'Student'}
                       </p>
                       <p className="text-xs text-slate-400 font-medium mt-0.5">
                         {new Date(log.logged_at).toLocaleTimeString()} • {log.reason}

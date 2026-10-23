@@ -1,0 +1,211 @@
+table_name,column_name,data_type,column_default,is_nullable,constraint_type,foreign_table_name,foreign_column_name
+academic_calendar,id,uuid,gen_random_uuid(),NO,PRIMARY KEY,academic_calendar,id
+academic_calendar,event_name,character varying,null,NO,null,null,null
+academic_calendar,event_date,date,null,NO,null,null,null
+academic_calendar,event_type,character varying,'General'::character varying,YES,null,null,null
+academic_calendar,created_by,uuid,null,YES,FOREIGN KEY,profiles,id
+academic_calendar,created_at,timestamp with time zone,"timezone('utc'::text, now())",YES,null,null,null
+announcements,id,uuid,gen_random_uuid(),NO,PRIMARY KEY,announcements,id
+announcements,title,character varying,null,NO,null,null,null
+announcements,message,text,null,NO,null,null,null
+announcements,target_audience,character varying,'ALL'::character varying,YES,null,null,null
+announcements,created_by,uuid,null,YES,FOREIGN KEY,profiles,id
+announcements,created_at,timestamp with time zone,"timezone('utc'::text, now())",YES,null,null,null
+attendance,id,uuid,uuid_generate_v4(),NO,PRIMARY KEY,attendance,id
+attendance,student_id,uuid,null,NO,FOREIGN KEY,students,id
+attendance,student_id,uuid,null,NO,UNIQUE,attendance,student_id
+attendance,student_id,uuid,null,NO,UNIQUE,attendance,date
+attendance,class_id,uuid,null,NO,FOREIGN KEY,classes,id
+attendance,date,date,null,NO,UNIQUE,attendance,date
+attendance,date,date,null,NO,UNIQUE,attendance,student_id
+attendance,status,character varying,'Present'::character varying,NO,null,null,null
+attendance,recorded_by,uuid,null,NO,FOREIGN KEY,profiles,id
+attendance,created_at,timestamp with time zone,now(),YES,null,null,null
+attendance,updated_at,timestamp with time zone,now(),YES,null,null,null
+attendance_records,id,uuid,gen_random_uuid(),NO,PRIMARY KEY,attendance_records,id
+attendance_records,register_id,uuid,null,YES,FOREIGN KEY,attendance_registers,id
+attendance_records,student_id,uuid,null,YES,FOREIGN KEY,students,id
+attendance_records,status,USER-DEFINED,null,NO,null,null,null
+attendance_registers,id,uuid,gen_random_uuid(),NO,PRIMARY KEY,attendance_registers,id
+attendance_registers,class_id,uuid,null,YES,UNIQUE,attendance_registers,class_id
+attendance_registers,class_id,uuid,null,YES,FOREIGN KEY,classes,id
+attendance_registers,class_id,uuid,null,YES,UNIQUE,attendance_registers,register_date
+attendance_registers,teacher_id,uuid,null,YES,FOREIGN KEY,profiles,id
+attendance_registers,register_date,date,CURRENT_DATE,NO,UNIQUE,attendance_registers,class_id
+attendance_registers,register_date,date,CURRENT_DATE,NO,UNIQUE,attendance_registers,register_date
+attendance_registers,status,character varying,'Submitted'::character varying,YES,null,null,null
+behavior_logs,id,uuid,gen_random_uuid(),NO,PRIMARY KEY,behavior_logs,id
+behavior_logs,student_id,uuid,null,YES,FOREIGN KEY,students,id
+behavior_logs,teacher_id,uuid,null,YES,FOREIGN KEY,profiles,id
+behavior_logs,log_type,USER-DEFINED,null,NO,null,null,null
+behavior_logs,points,integer,null,NO,null,null,null
+behavior_logs,reason,text,null,NO,null,null,null
+behavior_logs,logged_at,timestamp with time zone,"timezone('utc'::text, now())",YES,null,null,null
+class_subjects,id,uuid,uuid_generate_v4(),NO,PRIMARY KEY,class_subjects,id
+class_subjects,class_id,uuid,null,NO,UNIQUE,class_subjects,class_id
+class_subjects,class_id,uuid,null,NO,UNIQUE,class_subjects,subject_id
+class_subjects,class_id,uuid,null,NO,FOREIGN KEY,classes,id
+class_subjects,subject_id,uuid,null,NO,FOREIGN KEY,subjects,id
+class_subjects,subject_id,uuid,null,NO,UNIQUE,class_subjects,class_id
+class_subjects,subject_id,uuid,null,NO,UNIQUE,class_subjects,subject_id
+class_subjects,teacher_id,uuid,null,YES,FOREIGN KEY,profiles,id
+classes,id,uuid,gen_random_uuid(),NO,PRIMARY KEY,classes,id
+classes,class_name,character varying,null,NO,UNIQUE,classes,class_name
+classes,grading_system,USER-DEFINED,null,NO,null,null,null
+classes,class_teacher_id,uuid,null,YES,FOREIGN KEY,profiles,id
+communication_logs,id,uuid,uuid_generate_v4(),NO,PRIMARY KEY,communication_logs,id
+communication_logs,teacher_id,uuid,null,NO,FOREIGN KEY,profiles,id
+communication_logs,student_id,uuid,null,NO,FOREIGN KEY,students,id
+communication_logs,log_type,character varying,'Routine Call'::character varying,NO,null,null,null
+communication_logs,notes,text,null,NO,null,null,null
+communication_logs,logged_at,timestamp with time zone,now(),YES,null,null,null
+grades,id,uuid,gen_random_uuid(),NO,PRIMARY KEY,grades,id
+grades,student_id,uuid,null,YES,FOREIGN KEY,students,id
+grades,student_id,uuid,null,YES,UNIQUE,grades,term
+grades,student_id,uuid,null,YES,UNIQUE,grades,subject_id
+grades,student_id,uuid,null,YES,UNIQUE,grades,student_id
+grades,class_id,uuid,null,YES,FOREIGN KEY,classes,id
+grades,subject_id,uuid,null,NO,UNIQUE,grades,student_id
+grades,subject_id,uuid,null,NO,UNIQUE,grades,term
+grades,subject_id,uuid,null,NO,UNIQUE,grades,subject_id
+grades,subject_id,uuid,null,NO,FOREIGN KEY,subjects,id
+grades,term,character varying,null,NO,UNIQUE,grades,term
+grades,term,character varying,null,NO,UNIQUE,grades,student_id
+grades,term,character varying,null,NO,UNIQUE,grades,subject_id
+grades,numeric_mark,integer,null,YES,null,null,null
+grades,letter_grade,character varying,null,YES,null,null,null
+grades,teacher_id,uuid,null,YES,FOREIGN KEY,profiles,id
+grades,created_at,timestamp with time zone,"timezone('utc'::text, now())",YES,null,null,null
+in_app_notifications,id,uuid,gen_random_uuid(),NO,PRIMARY KEY,in_app_notifications,id
+in_app_notifications,user_id,uuid,null,YES,FOREIGN KEY,profiles,id
+in_app_notifications,title,character varying,null,NO,null,null,null
+in_app_notifications,message,text,null,NO,null,null,null
+in_app_notifications,redirect_url,character varying,'/'::character varying,YES,null,null,null
+in_app_notifications,is_read,boolean,false,YES,null,null,null
+in_app_notifications,created_at,timestamp with time zone,"timezone('utc'::text, now())",YES,null,null,null
+leave_requests,id,uuid,gen_random_uuid(),NO,PRIMARY KEY,leave_requests,id
+leave_requests,teacher_id,uuid,null,YES,FOREIGN KEY,profiles,id
+leave_requests,start_date,date,null,NO,null,null,null
+leave_requests,end_date,date,null,NO,null,null,null
+leave_requests,reason,text,null,NO,null,null,null
+leave_requests,status,character varying,'Pending'::character varying,YES,null,null,null
+leave_requests,created_at,timestamp with time zone,"timezone('utc'::text, now())",YES,null,null,null
+lesson_plans,id,uuid,gen_random_uuid(),NO,PRIMARY KEY,lesson_plans,id
+lesson_plans,teacher_id,uuid,null,YES,FOREIGN KEY,profiles,id
+lesson_plans,class_id,uuid,null,YES,FOREIGN KEY,classes,id
+lesson_plans,subject,character varying,null,NO,null,null,null
+lesson_plans,topic,character varying,null,NO,null,null,null
+lesson_plans,content,text,null,NO,null,null,null
+lesson_plans,plan_date,date,null,NO,null,null,null
+lesson_plans,status,character varying,'Draft'::character varying,YES,null,null,null
+lesson_plans,created_at,timestamp with time zone,"timezone('utc'::text, now())",YES,null,null,null
+lesson_templates,id,uuid,gen_random_uuid(),NO,PRIMARY KEY,lesson_templates,id
+lesson_templates,title,character varying,null,NO,null,null,null
+lesson_templates,description,text,null,NO,null,null,null
+lesson_templates,content_structure,text,null,NO,null,null,null
+lesson_templates,created_by,uuid,null,YES,FOREIGN KEY,profiles,id
+lesson_templates,created_at,timestamp with time zone,"timezone('utc'::text, now())",YES,null,null,null
+point_rules,id,uuid,uuid_generate_v4(),NO,PRIMARY KEY,point_rules,id
+point_rules,type,character varying,null,NO,null,null,null
+point_rules,reason,character varying,null,NO,null,null,null
+point_rules,points,integer,null,NO,null,null,null
+profiles,id,uuid,null,NO,PRIMARY KEY,profiles,id
+profiles,id,uuid,null,NO,FOREIGN KEY,null,null
+profiles,full_name,character varying,null,NO,null,null,null
+profiles,role,USER-DEFINED,null,NO,null,null,null
+profiles,phone_number,character varying,null,YES,null,null,null
+profiles,created_at,timestamp with time zone,"timezone('utc'::text, now())",YES,null,null,null
+profiles,its_number,character varying,null,YES,UNIQUE,profiles,its_number
+profiles,designation,character varying,null,YES,null,null,null
+profiles,personal_email,character varying,null,YES,null,null,null
+profiles,address,text,null,YES,null,null,null
+profiles,requires_password_change,boolean,true,YES,null,null,null
+profiles,avatar_url,text,null,YES,null,null,null
+push_subscriptions,id,uuid,gen_random_uuid(),NO,PRIMARY KEY,push_subscriptions,id
+push_subscriptions,user_id,uuid,null,YES,UNIQUE,push_subscriptions,user_id
+push_subscriptions,user_id,uuid,null,YES,FOREIGN KEY,null,null
+push_subscriptions,role,character varying,null,NO,null,null,null
+push_subscriptions,subscription,jsonb,null,NO,null,null,null
+push_subscriptions,created_at,timestamp with time zone,now(),YES,null,null,null
+student_leaves,id,uuid,gen_random_uuid(),NO,PRIMARY KEY,student_leaves,id
+student_leaves,student_id,uuid,null,YES,FOREIGN KEY,students,id
+student_leaves,parent_id,uuid,null,YES,FOREIGN KEY,profiles,id
+student_leaves,start_date,date,null,NO,null,null,null
+student_leaves,end_date,date,null,NO,null,null,null
+student_leaves,leave_type,character varying,'Regular'::character varying,YES,null,null,null
+student_leaves,reason,text,null,NO,null,null,null
+student_leaves,status,character varying,'Pending'::character varying,YES,null,null,null
+student_leaves,created_at,timestamp with time zone,"timezone('utc'::text, now())",YES,null,null,null
+students,id,uuid,gen_random_uuid(),NO,PRIMARY KEY,students,id
+students,its_number,character varying,null,NO,UNIQUE,students,its_number
+students,full_name,character varying,null,NO,null,null,null
+students,class_id,uuid,null,YES,FOREIGN KEY,classes,id
+students,parent_id,uuid,null,YES,FOREIGN KEY,profiles,id
+students,created_at,timestamp with time zone,"timezone('utc'::text, now())",YES,null,null,null
+students,roll_no,character varying,null,YES,null,null,null
+students,gr_no,character varying,null,YES,null,null,null
+students,date_of_birth,date,null,YES,null,null,null
+students,date_of_admission,date,null,YES,null,null,null
+students,address,text,null,YES,null,null,null
+students,emergency_contact,character varying,null,YES,null,null,null
+students,gr_name,character varying,null,YES,null,null,null
+students,father_name,character varying,null,YES,null,null,null
+students,mother_name,character varying,null,YES,null,null,null
+students,primary_parent_its,character varying,null,YES,null,null,null
+subjects,id,uuid,uuid_generate_v4(),NO,PRIMARY KEY,subjects,id
+subjects,name,character varying,null,NO,UNIQUE,subjects,name
+subjects,created_at,timestamp with time zone,now(),YES,null,null,null
+support_tickets,id,uuid,gen_random_uuid(),NO,PRIMARY KEY,support_tickets,id
+support_tickets,subject,character varying,null,NO,null,null,null
+support_tickets,description,text,null,NO,null,null,null
+support_tickets,status,character varying,'Open'::character varying,YES,null,null,null
+support_tickets,created_by,uuid,null,YES,FOREIGN KEY,profiles,id
+support_tickets,created_at,timestamp with time zone,"timezone('utc'::text, now())",YES,null,null,null
+support_tickets,assigned_to,uuid,null,YES,FOREIGN KEY,profiles,id
+syllabus_tracker,id,uuid,gen_random_uuid(),NO,PRIMARY KEY,syllabus_tracker,id
+syllabus_tracker,class_id,uuid,null,YES,UNIQUE,syllabus_tracker,class_id
+syllabus_tracker,class_id,uuid,null,YES,UNIQUE,syllabus_tracker,subject
+syllabus_tracker,class_id,uuid,null,YES,FOREIGN KEY,classes,id
+syllabus_tracker,subject,character varying,null,NO,UNIQUE,syllabus_tracker,class_id
+syllabus_tracker,subject,character varying,null,NO,UNIQUE,syllabus_tracker,subject
+syllabus_tracker,teacher_id,uuid,null,YES,FOREIGN KEY,profiles,id
+syllabus_tracker,total_units,integer,10,NO,null,null,null
+syllabus_tracker,completed_units,integer,0,NO,null,null,null
+syllabus_tracker,last_updated,timestamp with time zone,"timezone('utc'::text, now())",YES,null,null,null
+system_settings,id,uuid,gen_random_uuid(),NO,PRIMARY KEY,system_settings,id
+system_settings,school_name,character varying,'My Institution'::character varying,NO,null,null,null
+system_settings,academic_year,character varying,'2026-2027'::character varying,NO,null,null,null
+system_settings,current_term,character varying,'Term 1'::character varying,NO,null,null,null
+system_settings,grading_threshold,integer,5,NO,null,null,null
+system_settings,maintenance_mode,boolean,false,NO,null,null,null
+system_settings,updated_at,timestamp with time zone,"timezone('utc'::text, now())",YES,null,null,null
+teacher_timetables,id,uuid,gen_random_uuid(),NO,PRIMARY KEY,teacher_timetables,id
+teacher_timetables,teacher_id,uuid,null,YES,FOREIGN KEY,profiles,id
+teacher_timetables,teacher_id,uuid,null,YES,UNIQUE,teacher_timetables,day_of_week
+teacher_timetables,teacher_id,uuid,null,YES,UNIQUE,teacher_timetables,slot_id
+teacher_timetables,teacher_id,uuid,null,YES,UNIQUE,teacher_timetables,teacher_id
+teacher_timetables,day_of_week,character varying,null,NO,UNIQUE,teacher_timetables,slot_id
+teacher_timetables,day_of_week,character varying,null,NO,UNIQUE,teacher_timetables,teacher_id
+teacher_timetables,day_of_week,character varying,null,NO,UNIQUE,teacher_timetables,day_of_week
+teacher_timetables,slot_id,character varying,null,YES,UNIQUE,teacher_timetables,teacher_id
+teacher_timetables,slot_id,character varying,null,YES,FOREIGN KEY,time_slots,id
+teacher_timetables,slot_id,character varying,null,YES,UNIQUE,teacher_timetables,day_of_week
+teacher_timetables,slot_id,character varying,null,YES,UNIQUE,teacher_timetables,slot_id
+teacher_timetables,class_id,uuid,null,YES,FOREIGN KEY,classes,id
+teacher_timetables,subject,character varying,null,YES,null,null,null
+teacher_timetables,custom_label,character varying,null,YES,null,null,null
+ticket_assignments,section_id,character varying,null,NO,PRIMARY KEY,ticket_assignments,section_id
+ticket_assignments,section_name,character varying,null,NO,null,null,null
+ticket_assignments,teacher_id,uuid,null,YES,FOREIGN KEY,profiles,id
+ticket_assignments,updated_at,timestamp with time zone,"timezone('utc'::text, now())",YES,null,null,null
+ticket_replies,id,uuid,uuid_generate_v4(),NO,PRIMARY KEY,ticket_replies,id
+ticket_replies,ticket_id,uuid,null,NO,FOREIGN KEY,support_tickets,id
+ticket_replies,user_id,uuid,null,NO,FOREIGN KEY,profiles,id
+ticket_replies,message,text,null,NO,null,null,null
+ticket_replies,created_at,timestamp with time zone,now(),YES,null,null,null
+time_slots,id,character varying,null,NO,PRIMARY KEY,time_slots,id
+time_slots,label,character varying,null,NO,null,null,null
+time_slots,start_time,time without time zone,null,NO,null,null,null
+time_slots,end_time,time without time zone,null,NO,null,null,null
+time_slots,is_break,boolean,false,YES,null,null,null
+time_slots,sort_order,integer,null,NO,null,null,null

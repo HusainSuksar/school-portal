@@ -15,28 +15,28 @@ export default function ManageTeachers() {
     setIsLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
     
-    // THE CRITICAL FIX: Stop execution immediately if there is no active session
     if (!user) {
+      setIsAuthorized(false);
       setIsLoading(false);
       return; 
     }
     
-    // Security Checkpoint: Verify they are an ADMIN
+    // Security Checkpoint: Verify they are an ADMIN or HOS
     const { data: currentUserProfile } = await supabase
       .from('profiles')
       .select('role')
       .eq('id', user.id)
       .single();
 
-    if (currentUserProfile?.role !== 'ADMIN') {
+    if (currentUserProfile?.role !== 'ADMIN' && currentUserProfile?.role !== 'HOS') {
       setIsAuthorized(false);
       setIsLoading(false);
-      return; // Stop execution right here
+      return;
     }
 
     // If authorized, fetch the directory
-    const { data } = await supabase.from('profiles').select('*').order('full_name');
-    if (data) setProfiles(data);
+    const { data, error } = await supabase.from('profiles').select('*').order('full_name');
+    if (!error && data) setProfiles(data);
     setIsLoading(false);
   };
 
@@ -60,30 +60,27 @@ export default function ManageTeachers() {
       setStatusMsg({ type: 'error', text: `Failed to update role for ${userName}.` });
     } else {
       setStatusMsg({ type: 'success', text: `${userName} has been successfully updated to ${newRole}.` });
-      // Update local state to reflect the change immediately
       setProfiles(profiles.map(p => p.id === userId ? { ...p, role: newRole } : p));
       setTimeout(() => setStatusMsg({ type: '', text: '' }), 4000);
     }
   };
 
   const filteredProfiles = profiles.filter(p => 
-    p.full_name.toLowerCase().includes(searchTerm.toLowerCase())
+    (p.full_name?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (p.phone_number?.includes(searchTerm)) ||
+    (p.its_number?.includes(searchTerm))
   );
 
-  // Helper function to render role badges with specific colors
   const renderRoleBadge = (role) => {
     switch(role) {
       case 'ADMIN': return 'bg-purple-100 text-purple-700 border-purple-200';
       case 'HOS': return 'bg-amber-100 text-amber-700 border-amber-200';
       case 'CLASS_TR': return 'bg-indigo-100 text-indigo-700 border-indigo-200';
       case 'TEACHER': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-      default: return 'bg-slate-100 text-slate-600 border-slate-200'; // PARENT
+      default: return 'bg-slate-100 text-slate-600 border-slate-200';
     }
   };
 
-  // -------------------------------------------------------------
-  // ACCESS RESTRICTED SCREEN
-  // -------------------------------------------------------------
   if (!isAuthorized) {
     return (
       <div className="max-w-6xl mx-auto h-[60vh] flex flex-col items-center justify-center text-center">
@@ -94,9 +91,6 @@ export default function ManageTeachers() {
     );
   }
 
-  // -------------------------------------------------------------
-  // MAIN DASHBOARD (Only renders if authorized)
-  // -------------------------------------------------------------
   return (
     <div className="max-w-6xl mx-auto space-y-6 pb-12">
       
@@ -128,7 +122,7 @@ export default function ManageTeachers() {
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input 
               type="text" 
-              placeholder="Search by name..." 
+              placeholder="Search by name or ITS..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 shadow-sm"
@@ -157,13 +151,13 @@ export default function ManageTeachers() {
                     <tr key={profile.id} className="hover:bg-slate-50 transition-colors">
                       <td className="p-4 text-sm font-bold text-school-navy flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 font-bold text-xs">
-                          {profile.full_name.charAt(0)}
+                          {profile.full_name?.charAt(0) || 'U'}
                         </div>
                         {profile.full_name}
                       </td>
                       <td className="p-4">
                         <span className={`px-3 py-1.5 rounded-md font-bold text-[10px] uppercase tracking-wider border ${renderRoleBadge(profile.role)}`}>
-                          {profile.role.replace('_', ' ')}
+                          {profile.role ? profile.role.replace('_', ' ') : 'UNKNOWN'}
                         </span>
                       </td>
                       <td className="p-4 text-sm text-slate-500 font-medium">

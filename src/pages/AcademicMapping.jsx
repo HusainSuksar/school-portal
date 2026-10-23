@@ -43,7 +43,7 @@ export default function AcademicMapping() {
     const { data: teachersData } = await supabase
       .from('profiles')
       .select('id, full_name, role')
-      .in('role', ['TEACHER', 'CLASS_TR'])
+      .in('role', ['TEACHER', 'CLASS_TR', 'HOS', 'ADMIN'])
       .order('full_name');
       
     const { data: subjectsData } = await supabase
@@ -59,13 +59,13 @@ export default function AcademicMapping() {
   };
 
   const fetchClassSubjects = async (classId) => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('class_subjects')
       .select('id, teacher_id, subjects(id, name)')
       .eq('class_id', classId)
       .order('subjects(name)');
       
-    if (data) setClassSubjects(data);
+    if (!error && data) setClassSubjects(data);
   };
 
   // --- Core Handlers (with the Optimistic UI Fix) ---
@@ -92,7 +92,7 @@ export default function AcademicMapping() {
 
   const handleAddSubjectToClass = async (e) => {
     const subjectId = e.target.value;
-    if (!subjectId) return;
+    if (!subjectId || !selectedClass) return;
     setIsUpdating(true);
 
     const { data, error } = await supabase
@@ -104,6 +104,9 @@ export default function AcademicMapping() {
     if (!error && data) {
       setClassSubjects([...classSubjects, data]);
       fetchGlobalData(); 
+    } else {
+      console.error("Failed to add subject:", error);
+      alert("Failed to add subject to class.");
     }
     e.target.value = ''; 
     setIsUpdating(false);
@@ -112,18 +115,28 @@ export default function AcademicMapping() {
   const handleAssignSubjectTeacher = async (classSubjectId, teacherId) => {
     setIsUpdating(true);
     const val = teacherId === '' ? null : teacherId;
-    await supabase.from('class_subjects').update({ teacher_id: val }).eq('id', classSubjectId);
+    const { error } = await supabase.from('class_subjects').update({ teacher_id: val }).eq('id', classSubjectId);
     
-    setClassSubjects(classSubjects.map(cs => cs.id === classSubjectId ? { ...cs, teacher_id: val } : cs));
-    fetchGlobalData(); 
+    if (!error) {
+      setClassSubjects(classSubjects.map(cs => cs.id === classSubjectId ? { ...cs, teacher_id: val } : cs));
+      fetchGlobalData(); 
+    } else {
+      console.error("Failed to assign teacher:", error);
+      alert("Failed to assign teacher.");
+    }
     setIsUpdating(false);
   };
 
   const handleRemoveSubject = async (classSubjectId) => {
     setIsUpdating(true);
-    await supabase.from('class_subjects').delete().eq('id', classSubjectId);
-    setClassSubjects(classSubjects.filter(cs => cs.id !== classSubjectId));
-    fetchGlobalData(); 
+    const { error } = await supabase.from('class_subjects').delete().eq('id', classSubjectId);
+    if (!error) {
+      setClassSubjects(classSubjects.filter(cs => cs.id !== classSubjectId));
+      fetchGlobalData(); 
+    } else {
+      console.error("Failed to remove subject:", error);
+      alert("Failed to remove subject.");
+    }
     setIsUpdating(false);
   };
 
@@ -142,11 +155,14 @@ export default function AcademicMapping() {
       setMasterSubjects([...masterSubjects, data]);
       setNewSubjectName('');
       setIsCreatingSubject(false);
+    } else {
+      console.error("Failed to create master subject:", error);
+      alert("Failed to create subject.");
     }
     setIsUpdating(false);
   };
 
-  // --- NEW: Bulk Matrix Logic ---
+  // --- Bulk Matrix Logic ---
   const toggleBulkClassSelection = (classId) => {
     if (bulkSelectedClasses.includes(classId)) {
       setBulkSelectedClasses(bulkSelectedClasses.filter(id => id !== classId));
@@ -204,7 +220,7 @@ export default function AcademicMapping() {
   };
 
   const availableSubjects = masterSubjects.filter(
-    ms => !classSubjects.some(cs => cs.subjects.id === ms.id)
+    ms => !classSubjects.some(cs => cs.subjects?.id === ms.id)
   );
 
   if (isLoading) {
@@ -224,7 +240,7 @@ export default function AcademicMapping() {
           <p className="text-sm text-slate-500 font-medium mt-1">Assign Class Teachers and configure subject workflows.</p>
         </div>
         
-        {/* NEW: Bulk Matrix Toggle Button */}
+        {/* Bulk Matrix Toggle Button */}
         <button 
           onClick={() => setShowBulkMatrix(true)}
           className="bg-school-navy text-white px-4 py-2 rounded-lg text-sm font-bold shadow-md hover:bg-slate-800 transition-colors flex items-center gap-2"
@@ -383,7 +399,7 @@ export default function AcademicMapping() {
                     >
                       <option value="">-- Unassigned (Select a Teacher) --</option>
                       {teachers.map(t => (
-                        <option key={t.id} value={t.id}>{t.full_name}</option>
+                        <option key={t.id} value={t.id}>{t.full_name} ({t.role})</option>
                       ))}
                     </select>
                   </div>
@@ -448,7 +464,7 @@ export default function AcademicMapping() {
                     {classSubjects.map((cs) => (
                       <div key={cs.id} className="flex flex-col md:flex-row md:items-center gap-4 p-4 border border-slate-200 rounded-xl bg-slate-50 group">
                         <div className="flex-1">
-                          <h4 className="font-bold text-school-navy">{cs.subjects.name}</h4>
+                          <h4 className="font-bold text-school-navy">{cs.subjects?.name || 'Unknown Subject'}</h4>
                         </div>
                         
                         <div className="flex-1">
@@ -463,7 +479,7 @@ export default function AcademicMapping() {
                           >
                             <option value="">-- Missing Teacher --</option>
                             {teachers.map(t => (
-                              <option key={t.id} value={t.id}>{t.full_name}</option>
+                              <option key={t.id} value={t.id}>{t.full_name} ({t.role})</option>
                             ))}
                           </select>
                         </div>

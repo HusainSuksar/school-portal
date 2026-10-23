@@ -32,7 +32,7 @@ import ParentOnboarding from './pages/ParentOnboarding';
 import Attendance from './pages/Attendance';
 import RequestStudentLeave from './pages/RequestStudentLeave';
 import Profile from './pages/Profile';
-import TimetableManager from './pages/TimetableManager'; // NEW IMPORT
+import TimetableManager from './pages/TimetableManager';
 
 export default function App() {
   const [session, setSession] = useState(null);
@@ -64,7 +64,7 @@ export default function App() {
         {/* PUBLIC ROUTE */}
         <Route 
           path="/login" 
-          element={!session ? <Login /> : <Navigate to="/admin" />} 
+          element={!session ? <Login /> : <Navigate to="/" />} 
         />
 
         {/* PRIVATE ROUTES */}
@@ -93,14 +93,14 @@ export default function App() {
           <Route path="help-centre" element={<HelpCentre />} />
           <Route path="system-settings" element={<SystemSettings />} />
           <Route path="calendar" element={<AcademicCalendar />} />
-          <Route path="/gradebook" element={<Gradebook />} />
-          <Route path="/staff-onboarding" element={<StaffOnboarding />} />
-          <Route path="/academic-mapping" element={<AcademicMapping />} />
-          <Route path="/parent-onboarding" element={<ParentOnboarding />} />
-          <Route element={<Attendance />} path="/attendance" />
-          <Route element={<RequestStudentLeave />} path="/request-leave" />
-          <Route element={<Profile />} path="/profile" />
-          <Route element={<TimetableManager />} path="/timetable-manager" /> {/* NEW ROUTE */}
+          <Route path="gradebook" element={<Gradebook />} />
+          <Route path="staff-onboarding" element={<StaffOnboarding />} />
+          <Route path="academic-mapping" element={<AcademicMapping />} />
+          <Route path="parent-onboarding" element={<ParentOnboarding />} />
+          <Route path="attendance" element={<Attendance />} />
+          <Route path="request-leave" element={<RequestStudentLeave />} />
+          <Route path="profile" element={<Profile />} />
+          <Route path="timetable-manager" element={<TimetableManager />} />
         </Route>
         
       </Routes>

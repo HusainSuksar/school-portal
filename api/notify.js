@@ -2,12 +2,14 @@
 import webpush from 'web-push';
 import { createClient } from '@supabase/supabase-js';
 
-// Configure Web Push Keys
-webpush.setVapidDetails(
-  'mailto:admin@msbindore.org',
-  process.env.VITE_PUBLIC_VAPID_KEY,
-  process.env.PRIVATE_VAPID_KEY
-);
+// Configure Web Push Keys safely
+if (process.env.VITE_PUBLIC_VAPID_KEY && process.env.PRIVATE_VAPID_KEY) {
+  webpush.setVapidDetails(
+    'mailto:admin@msbindore.org',
+    process.env.VITE_PUBLIC_VAPID_KEY,
+    process.env.PRIVATE_VAPID_KEY
+  );
+}
 
 // Initialize Admin Database Client (Bypasses RLS)
 const supabaseAdmin = createClient(
@@ -37,16 +39,23 @@ export default async function handler(req, res) {
       message,
       redirect_url: url || '/',
     }));
-    await supabaseAdmin.from('in_app_notifications').insert(inAppPayload);
+    const { error: insertError } = await supabaseAdmin.from('in_app_notifications').insert(inAppPayload);
+    if (insertError) {
+      console.error('Failed to insert in_app_notifications:', insertError);
+    }
 
     // 2. Fetch the Mobile Web Push Subscriptions for these specific users
-    const { data: subscriptions } = await supabaseAdmin
+    const { data: subscriptions, error: subError } = await supabaseAdmin
       .from('push_subscriptions')
       .select('subscription')
       .in('user_id', uniqueTargets);
 
+    if (subError) {
+      console.error('Failed to fetch push_subscriptions:', subError);
+    }
+
     // 3. Fire the Lock-Screen Push Notifications
-    if (subscriptions && subscriptions.length > 0) {
+    if (subscriptions && subscriptions.length > 0 && process.env.VITE_PUBLIC_VAPID_KEY && process.env.PRIVATE_VAPID_KEY) {
       const pushPromises = subscriptions.map((sub) =>
         webpush.sendNotification(
           sub.subscription,

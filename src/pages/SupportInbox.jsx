@@ -20,16 +20,18 @@ export default function SupportInbox() {
     const { data: { user } } = await supabase.auth.getUser();
     setCurrentUser(user);
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('support_tickets')
-      .select('*, profiles(full_name, phone_number, role)')
+      .select('*, profiles:profiles!created_by(full_name, phone_number, role)')
       .order('status', { ascending: true }) // Sorts alphabetically (Closed, In Progress, Open, Resolved) - we will custom sort in JS
       .order('created_at', { ascending: false });
 
-    if (data) {
+    if (error) {
+      console.error("Error fetching tickets:", error);
+    } else if (data) {
       // Custom Sort: Open -> In Progress -> Resolved -> Closed
       const statusWeight = { 'Open': 1, 'In Progress': 2, 'Resolved': 3, 'Closed': 4 };
-      data.sort((a, b) => statusWeight[a.status] - statusWeight[b.status]);
+      data.sort((a, b) => (statusWeight[a.status] || 5) - (statusWeight[b.status] || 5));
       setTickets(data);
     }
     setIsLoading(false);
@@ -44,13 +46,17 @@ export default function SupportInbox() {
     if (!activeTicket) return;
     
     const fetchReplies = async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('ticket_replies')
-        .select('*, profiles(full_name, role)')
+        .select('*, profiles:profiles!user_id(full_name, role)')
         .eq('ticket_id', activeTicket.id)
         .order('created_at', { ascending: true });
         
-      if (data) setReplies(data);
+      if (error) {
+        console.error("Error fetching replies:", error);
+      } else if (data) {
+        setReplies(data);
+      }
       scrollToBottom();
     };
     
@@ -86,6 +92,20 @@ export default function SupportInbox() {
     if (!error) {
       setActiveTicket({ ...activeTicket, status: newStatus });
       setTickets(tickets.map(t => t.id === activeTicket.id ? { ...t, status: newStatus } : t));
+
+      // Notify the ticket creator
+      if (activeTicket.created_by) {
+        fetch('/api/notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: activeTicket.created_by,
+            title: 'Support Ticket Status Updated',
+            message: `Your ticket "${activeTicket.subject}" status was changed to ${newStatus}.`,
+            url: '/help'
+          })
+        }).catch(e => console.error("Notification dispatch failed:", e));
+      }
     }
   };
 
@@ -104,7 +124,7 @@ export default function SupportInbox() {
         user_id: currentUser.id,
         message: replyText.trim()
       }])
-      .select('*, profiles(full_name, role)')
+      .select('*, profiles:profiles!user_id(full_name, role)')
       .single();
 
     if (!error && replyData) {
@@ -115,6 +135,21 @@ export default function SupportInbox() {
       if (activeTicket.status === 'Open') {
         updateStatus('In Progress');
       }
+
+      // Notify the ticket creator if the replier is not the ticket creator
+      if (activeTicket.created_by && activeTicket.created_by !== currentUser.id) {
+        fetch('/api/notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: activeTicket.created_by,
+            title: 'New Reply on Support Ticket',
+            message: `Support team replied to: "${activeTicket.subject}".`,
+            url: '/help'
+          })
+        }).catch(e => console.error("Notification dispatch failed:", e));
+      }
+
       scrollToBottom();
     }
     setIsSending(false);

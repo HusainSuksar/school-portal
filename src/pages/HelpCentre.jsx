@@ -17,7 +17,7 @@ export default function HelpCentre() {
   const [isSending, setIsSending] = useState(false);
   
   const [currentUser, setCurrentUser] = useState(null);
-  const [userRole, setUserRole] = useState(''); // NEW: Track role for Admin features
+  const [userRole, setUserRole] = useState('');
   
   const chatEndRef = useRef(null);
 
@@ -31,6 +31,10 @@ export default function HelpCentre() {
 
   const fetchMyTickets = async () => {
     const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
     setCurrentUser(user);
 
     // Get user role to determine what they can see and do
@@ -65,7 +69,6 @@ export default function HelpCentre() {
     setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
   };
 
-  // --- NEW: Admin Status Update Function ---
   const handleStatusChange = async (newStatus) => {
     if (!activeTicket) return;
     
@@ -75,7 +78,6 @@ export default function HelpCentre() {
       .eq('id', activeTicket.id);
       
     if (!error) {
-      // Update local states immediately
       setActiveTicket({ ...activeTicket, status: newStatus });
       setTickets(tickets.map(t => t.id === activeTicket.id ? { ...t, status: newStatus } : t));
       
@@ -87,14 +89,19 @@ export default function HelpCentre() {
           userIds: [activeTicket.created_by],
           title: 'Ticket Status Updated',
           message: `Your ticket "${activeTicket.subject}" has been marked as ${newStatus}.`,
+          redirect_url: '/help-centre',
           url: '/help-centre'
         })
       }).catch(console.error);
+    } else {
+      console.error("Failed to update ticket status:", error);
+      alert("Failed to update status.");
     }
   };
 
   const handleCreateTicket = async (e) => {
     e.preventDefault();
+    if (!currentUser?.id) return;
     setIsSending(true);
     let assignedTeacherId = null;
 
@@ -149,17 +156,21 @@ export default function HelpCentre() {
             userIds: notifyIds,
             title: 'New Support Ticket',
             message: data.subject,
+            redirect_url: '/help-centre',
             url: '/help-centre'
           })
         }).catch(console.error);
       }
+    } else {
+      console.error("Failed to create ticket:", error);
+      alert("Failed to submit support ticket.");
     }
     setIsSending(false);
   };
 
   const handleSendReply = async (e) => {
     e.preventDefault();
-    if (!replyText.trim() || !activeTicket) return;
+    if (!replyText.trim() || !activeTicket || !currentUser?.id) return;
     setIsSending(true);
     
     const { data, error } = await supabase.from('ticket_replies').insert([{
@@ -190,13 +201,14 @@ export default function HelpCentre() {
             userIds: targetIds,
             title: 'New Reply on Ticket',
             message: `Re: ${activeTicket.subject}`,
+            redirect_url: '/help-centre',
             url: '/help-centre'
           })
         }).catch(console.error);
       }
     } else {
       console.error("Reply Error:", error);
-      alert(`Failed to send reply: ${error.message || 'Permission denied'}`);
+      alert(`Failed to send reply: ${error?.message || 'Permission denied'}`);
     }
     setIsSending(false);
   };
@@ -229,7 +241,7 @@ export default function HelpCentre() {
 
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-0">
         
-        {/* LEFT: Ticket History (Hidden on mobile if viewing/creating a ticket) */}
+        {/* LEFT: Ticket History */}
         <div className={`lg:col-span-1 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-col h-full ${activeTicket || isCreating ? 'hidden lg:flex' : 'flex'}`}>
           <div className="p-4 border-b border-slate-100 bg-slate-50"><h3 className="font-bold text-school-navy flex items-center gap-2">My Requests</h3></div>
           <div className="flex-1 overflow-y-auto divide-y divide-slate-100 custom-scrollbar">
@@ -245,7 +257,7 @@ export default function HelpCentre() {
           </div>
         </div>
 
-        {/* RIGHT: Chat Thread or Creation Form (Hidden on mobile if NO ticket is active) */}
+        {/* RIGHT: Chat Thread or Creation Form */}
         <div className={`lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-col h-full ${!activeTicket && !isCreating ? 'hidden lg:flex' : 'flex'}`}>
           
           {isCreating ? (
@@ -321,9 +333,15 @@ export default function HelpCentre() {
 
                 {replies.map(reply => {
                   const isMine = reply.user_id === currentUser?.id;
+                  const senderName = isMine 
+                    ? 'You' 
+                    : `${reply.profiles?.full_name || 'Staff'}${reply.profiles?.role === 'ADMIN' || reply.profiles?.role === 'HOS' ? ' (Admin)' : ''}`;
+                  
                   return (
                     <div key={reply.id} className={`flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
-                      <span className="text-[10px] font-bold text-slate-400 mb-1 mx-1 uppercase tracking-wider">{isMine ? 'You' : reply.profiles?.full_name + (reply.profiles?.role === 'ADMIN' ? ' (Admin)' : '')} • {new Date(reply.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                      <span className="text-[10px] font-bold text-slate-400 mb-1 mx-1 uppercase tracking-wider">
+                        {senderName} • {new Date(reply.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                      </span>
                       <div className={`p-4 rounded-2xl max-w-[90%] md:max-w-[85%] shadow-sm ${isMine ? 'bg-indigo-600 text-white rounded-tr-sm' : 'bg-white border border-slate-200 text-slate-700 rounded-tl-sm'}`}>
                         <p className="text-sm whitespace-pre-wrap">{reply.message}</p>
                       </div>

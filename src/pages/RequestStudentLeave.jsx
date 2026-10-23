@@ -19,11 +19,14 @@ export default function RequestStudentLeave() {
   const fetchParentData = async () => {
     setIsLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
 
     const { data: kids } = await supabase
       .from('students')
-      .select('id, full_name, classes(class_name)')
+      .select('id, full_name, class_id, classes(class_name, class_teacher_id)')
       .eq('parent_id', user.id);
       
     if (kids && kids.length > 0) {
@@ -54,6 +57,10 @@ export default function RequestStudentLeave() {
     setStatusMsg({ type: '', text: '' });
     
     const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setIsSubmitting(false);
+      return;
+    }
 
     const { error } = await supabase
       .from('student_leaves')
@@ -67,20 +74,30 @@ export default function RequestStudentLeave() {
       }]);
 
     if (error) {
+      console.error("Leave Request Submission Error:", error);
       setStatusMsg({ type: 'error', text: 'Failed to submit request. Please try again.' });
     } else {
       setStatusMsg({ type: 'success', text: 'Leave request submitted successfully to the administration.' });
       
-      // --- 🚀 NEW TARGETED NOTIFICATION TRIGGER (Parent Submits Leave) ---
+      // Target student's class teacher + admins/HOS
+      const targetStudent = children.find(c => c.id === selectedChildId);
+      const recipientIds = new Set();
+      
       const { data: admins } = await supabase.from('profiles').select('id').in('role', ['ADMIN', 'HOS']);
-      if (admins && admins.length > 0) {
+      admins?.forEach(a => recipientIds.add(a.id));
+      if (targetStudent?.classes?.class_teacher_id) {
+        recipientIds.add(targetStudent.classes.class_teacher_id);
+      }
+
+      if (recipientIds.size > 0) {
         fetch('/api/notify', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            userIds: admins.map(a => a.id),
+            userIds: Array.from(recipientIds),
             title: 'New Student Leave Request',
-            message: `A new student leave request is pending approval.`,
+            message: `Leave request for ${targetStudent?.full_name || 'a student'} is pending approval.`,
+            redirect_url: '/leave-approvals',
             url: '/leave-approvals'
           })
         }).catch(console.error);
@@ -139,48 +156,51 @@ export default function RequestStudentLeave() {
             )}
 
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Type of Leave</label>
-              <select required value={leaveType} onChange={(e) => setLeaveType(e.target.value)} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium focus:outline-none focus:border-indigo-500">
-                <option value="Sick Leave">Sick Leave (Medical)</option>
-                <option value="Family Emergency">Family Emergency</option>
-                <option value="Pre-Planned Travel">Pre-Planned Travel</option>
-                <option value="Other">Other / General Absence</option>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Leave Category</label>
+              <select value={leaveType} onChange={(e) => setLeaveType(e.target.value)} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold text-school-navy focus:outline-none focus:border-indigo-500">
+                <option value="Sick Leave">Sick Leave</option>
+                <option value="Family Function">Family Function / Event</option>
+                <option value="Travel / Ziyarat">Travel / Ziyarat</option>
+                <option value="Other">Other Reason</option>
               </select>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Start Date</label>
-                <input type="date" required value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500" />
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">From Date</label>
+                <input type="date" required value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium text-school-navy focus:outline-none focus:border-indigo-500" />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">End Date</label>
-                <input type="date" required value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500" />
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">To Date</label>
+                <input type="date" required value={endDate} min={startDate} onChange={(e) => setEndDate(e.target.value)} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium text-school-navy focus:outline-none focus:border-indigo-500" />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Reason</label>
-              <textarea required value={reason} onChange={(e) => setReason(e.target.value)} rows="3" placeholder="Please provide brief details..." className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm resize-none focus:outline-none focus:border-indigo-500"></textarea>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Detailed Reason</label>
+              <textarea required rows="4" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Please elaborate on the reason for absence..." className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm resize-none focus:outline-none focus:border-indigo-500 font-medium"></textarea>
             </div>
 
-            <button type="submit" disabled={isSubmitting || children.length === 0} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-lg text-sm font-bold transition-all shadow-md disabled:bg-slate-300 flex items-center justify-center gap-2">
-              {isSubmitting ? 'Submitting...' : <><Send className="w-4 h-4" /> Submit Request</>}
+            <button type="submit" disabled={isSubmitting} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-lg text-sm font-bold transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-50">
+              <Send className="w-4 h-4" /> {isSubmitting ? 'Transmitting...' : 'Submit Leave Notification'}
             </button>
           </form>
         </div>
 
-        <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-[600px]">
+        <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-[650px]">
           <div className="p-4 border-b border-slate-100 bg-slate-50">
-            <h3 className="font-bold text-school-navy">My Request History</h3>
+            <h3 className="font-bold text-school-navy">Past Requests & Status</h3>
           </div>
           
-          <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {leaveHistory.length > 0 ? leaveHistory.map(req => (
-              <div key={req.id} className="p-5 border border-slate-200 rounded-xl hover:shadow-md transition-shadow relative">
-                
-                <div className="absolute top-5 right-5">
-                  <span className={`text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider flex items-center gap-1 ${
+              <div key={req.id} className="p-4 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <h4 className="font-bold text-school-navy">{req.students?.full_name}</h4>
+                    <p className="text-xs font-bold text-indigo-600 mt-0.5">{req.leave_type}</p>
+                  </div>
+                  <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider flex items-center gap-1 ${
                     req.status === 'Pending' ? 'bg-amber-100 text-amber-700' :
                     req.status === 'Approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
                   }`}>
@@ -190,29 +210,18 @@ export default function RequestStudentLeave() {
                     {req.status}
                   </span>
                 </div>
-
-                <div className="pr-24">
-                  <h4 className="font-bold text-lg text-school-navy">{req.students?.full_name}</h4>
-                  <p className="text-sm font-bold text-indigo-600 mt-0.5">{req.leave_type}</p>
-                  <p className="text-sm font-medium text-slate-500 mt-2 flex items-center gap-2">
-                    <CalendarClock className="w-4 h-4 text-slate-400" /> 
-                    {new Date(req.start_date).toLocaleDateString()} to {new Date(req.end_date).toLocaleDateString()}
-                  </p>
-                </div>
-
-                <div className="mt-4 p-4 bg-slate-50 rounded-lg border border-slate-100">
-                  <p className="text-sm text-slate-700">{req.reason}</p>
-                </div>
                 
-                <p className="text-xs text-slate-400 font-bold mt-4 flex items-center gap-1">
-                  <Clock className="w-3 h-3" /> Submitted on {new Date(req.created_at).toLocaleDateString()}
-                </p>
+                <p className="text-xs font-semibold text-slate-500 bg-white border border-slate-100 p-2.5 rounded-lg mb-2">{req.reason}</p>
+                
+                <div className="flex items-center justify-between text-[11px] font-medium text-slate-400">
+                  <span>{new Date(req.start_date).toLocaleDateString()} to {new Date(req.end_date).toLocaleDateString()}</span>
+                  <span>Submitted {new Date(req.created_at).toLocaleDateString()}</span>
+                </div>
               </div>
             )) : (
               <div className="h-full flex flex-col items-center justify-center text-slate-400">
-                <CalendarClock className="w-16 h-16 mb-3 opacity-20" />
-                <p className="font-bold text-school-navy text-lg">No Previous Requests</p>
-                <p className="font-medium text-sm mt-1 max-w-sm text-center">You have not submitted any leave requests for your children yet.</p>
+                <CalendarClock className="w-12 h-12 mb-3 opacity-20" />
+                <p className="font-medium text-sm">No leave requests found.</p>
               </div>
             )}
           </div>

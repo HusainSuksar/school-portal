@@ -106,9 +106,13 @@ export default function NotificationBell() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    await supabase.from('in_app_notifications').update({ is_read: true }).eq('user_id', user.id).eq('is_read', false);
-    setUnreadCount(0);
-    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+    const { error } = await supabase.from('in_app_notifications').update({ is_read: true }).eq('user_id', user.id).eq('is_read', false);
+    if (!error) {
+      setUnreadCount(0);
+      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+    } else {
+      console.error('Failed to mark all notifications as read:', error);
+    }
   };
 
   // --- NEW: Inline Push Notification Enabler ---
@@ -125,7 +129,7 @@ export default function NotificationBell() {
       if (permission !== 'granted') return;
 
       const registration = await navigator.serviceWorker.ready;
-      const PUBLIC_VAPID_KEY = "BNlMSjHRveSNG46-s1f5lJt66IDt0Nyj171cxykcdgfxdX9CLFOKyhZ7PvFWFsPKjqg6D384pl9zq7TmtyT5vZo";
+      const PUBLIC_VAPID_KEY = import.meta.env.VITE_PUBLIC_VAPID_KEY || "BNlMSjHRveSNG46-s1f5lJt66IDt0Nyj171cxykcdgfxdX9CLFOKyhZ7PvFWFsPKjqg6D384pl9zq7TmtyT5vZo";
 
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,

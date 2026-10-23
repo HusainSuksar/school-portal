@@ -33,22 +33,24 @@ export default function Gradebook() {
     setIsLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
     
-    if (!user) return;
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
 
     // Fetch ONLY the classes & subjects mapped to this specific teacher
-    const { data: teacherMappings } = await supabase
+    const { data: teacherMappings, error } = await supabase
       .from('class_subjects')
       .select(`
         id,
         class_id,
         subject_id,
-        classes ( class_name ),
+        classes ( class_name, grading_system ),
         subjects ( name )
       `)
-      .eq('teacher_id', user.id)
-      .order('classes(class_name)');
+      .eq('teacher_id', user.id);
 
-    if (teacherMappings) {
+    if (!error && teacherMappings) {
       setAssignments(teacherMappings);
     }
     setIsLoading(false);
@@ -87,7 +89,7 @@ export default function Gradebook() {
       const newGradesMap = {};
       if (existingGrades) {
         existingGrades.forEach(g => {
-          newGradesMap[g.student_id] = g.letter_grade || g.numeric_mark || '';
+          newGradesMap[g.student_id] = g.letter_grade || (g.numeric_mark !== null ? g.numeric_mark : '');
         });
       }
 
@@ -117,24 +119,25 @@ export default function Gradebook() {
     }
 
     // Determine the grading system for the payload
-    const classLevel = parseInt(activeAssignment.classes.class_name.match(/\d+/)?.[0] || '0', 10);
-    const isLetterGrading = classLevel >= 1 && classLevel <= 4;
+    const classLevel = parseInt(activeAssignment.classes?.class_name?.match(/\d+/)?.[0] || '0', 10);
+    const isLetterGrading = activeAssignment.classes?.grading_system === 'Letter' || (classLevel >= 1 && classLevel <= 4);
 
-    // Build the bulk upsert payload
+    // Build the bulk upsert payload including class_id
     const payload = students.map(student => {
       const rawValue = gradesMap[student.id];
       const dataRow = {
         student_id: student.id,
+        class_id: activeAssignment.class_id,
         subject_id: activeAssignment.subject_id,
         teacher_id: user.id,
         term: selectedTerm,
       };
 
       if (isLetterGrading) {
-        dataRow.letter_grade = rawValue || null;
+        dataRow.letter_grade = rawValue ? String(rawValue).trim() : null;
         dataRow.numeric_mark = null;
       } else {
-        dataRow.numeric_mark = rawValue ? parseInt(rawValue, 10) : null;
+        dataRow.numeric_mark = (rawValue !== undefined && rawValue !== '' && rawValue !== null) ? parseInt(rawValue, 10) : null;
         dataRow.letter_grade = null;
       }
       return dataRow;
@@ -166,8 +169,8 @@ export default function Gradebook() {
 
   // --- Dynamic UI Helpers ---
   const activeAssignment = assignments.find(a => a.id === selectedAssignmentId);
-  const classLevel = activeAssignment ? parseInt(activeAssignment.classes.class_name.match(/\d+/)?.[0] || '0', 10) : 0;
-  const isLetterGrading = classLevel >= 1 && classLevel <= 4;
+  const classLevel = activeAssignment ? parseInt(activeAssignment.classes?.class_name?.match(/\d+/)?.[0] || '0', 10) : 0;
+  const isLetterGrading = activeAssignment?.classes?.grading_system === 'Letter' || (classLevel >= 1 && classLevel <= 4);
 
   if (isLoading && assignments.length === 0) {
     return <div className="flex h-[60vh] items-center justify-center"><div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div></div>;
@@ -205,7 +208,7 @@ export default function Gradebook() {
           >
             <option value="">-- Choose your assigned class --</option>
             {assignments.map(a => (
-              <option key={a.id} value={a.id}>{a.classes.class_name} • {a.subjects.name}</option>
+              <option key={a.id} value={a.id}>{a.classes?.class_name || 'Class'} • {a.subjects?.name || 'Subject'}</option>
             ))}
           </select>
         </div>

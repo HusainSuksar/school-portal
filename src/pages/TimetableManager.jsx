@@ -17,7 +17,7 @@ export default function TimetableManager() {
 
   useEffect(() => {
     async function initData() {
-      const { data: teachersData } = await supabase.from('profiles').select('id, full_name').in('role', ['TEACHER', 'CLASS_TR']).order('full_name');
+      const { data: teachersData } = await supabase.from('profiles').select('id, full_name').in('role', ['TEACHER', 'CLASS_TR', 'HOS', 'ADMIN']).order('full_name');
       if (teachersData) setTeachers(teachersData);
       
       const { data: slots } = await supabase.from('time_slots').select('*').order('sort_order');
@@ -72,6 +72,29 @@ export default function TimetableManager() {
     const { day, slot_id } = editingCell;
     const key = `${day}_${slot_id}`;
 
+    if (selectionType === 'CLEAR') {
+      const { error } = await supabase
+        .from('teacher_timetables')
+        .delete()
+        .eq('teacher_id', selectedTeacherId)
+        .eq('day_of_week', day)
+        .eq('slot_id', slot_id);
+
+      if (!error) {
+        setTimetable(prev => {
+          const updated = { ...prev };
+          delete updated[key];
+          return updated;
+        });
+      } else {
+        console.error("Failed to delete timetable entry:", error);
+        alert("Failed to clear cell.");
+      }
+      setEditingCell(null);
+      setIsSaving(false);
+      return;
+    }
+
     let payload = {
       teacher_id: selectedTeacherId,
       day_of_week: day,
@@ -82,8 +105,8 @@ export default function TimetableManager() {
     };
 
     if (selectionType === 'ACADEMIC') {
-      payload.class_id = mappingData.class_id;
-      payload.subject = mappingData.subjects.name;
+      payload.class_id = mappingData?.class_id || null;
+      payload.subject = mappingData?.subjects?.name || 'Class';
     } else if (selectionType === 'CUSTOM') {
       payload.custom_label = customVal;
     }
@@ -96,12 +119,9 @@ export default function TimetableManager() {
 
     if (!error && data) {
       setTimetable(prev => ({ ...prev, [key]: data }));
-    } else if (!error && selectionType === 'CLEAR') {
-      // If cleared, delete from db
-      await supabase.from('teacher_timetables').delete().eq('teacher_id', selectedTeacherId).eq('day_of_week', day).eq('slot_id', slot_id);
-      const newTimetable = { ...timetable };
-      delete newTimetable[key];
-      setTimetable(newTimetable);
+    } else if (error) {
+      console.error("Failed to upsert timetable entry:", error);
+      alert("Failed to save timetable slot.");
     }
     
     setEditingCell(null);
@@ -184,7 +204,7 @@ export default function TimetableManager() {
                             <div className="space-y-1 mb-3 max-h-32 overflow-y-auto">
                               {academicMappings.map((map, idx) => (
                                 <button key={idx} onClick={() => handleAssign('ACADEMIC', map)} className="w-full text-left text-xs font-bold text-school-navy bg-slate-50 hover:bg-indigo-50 p-2 rounded border border-slate-100">
-                                  {map.subjects.name} ({map.classes.class_name})
+                                  {map.subjects?.name || 'Subject'} ({map.classes?.class_name || 'Class'})
                                 </button>
                               ))}
                               {academicMappings.length === 0 && <p className="text-xs text-red-500 italic">No mapped subjects. Check Academic Mapping module.</p>}

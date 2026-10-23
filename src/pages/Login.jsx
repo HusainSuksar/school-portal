@@ -37,7 +37,7 @@ export default function Login() {
     setIsLoading(true);
     setAuthError(null);
     
-    const formattedEmail = `${itsNumber}@msb.local`;
+    const formattedEmail = `${itsNumber.trim()}@msb.local`;
 
     const { data: authData, error } = await supabase.auth.signInWithPassword({
       email: formattedEmail,
@@ -50,17 +50,21 @@ export default function Login() {
       return; 
     }
 
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', authData.user.id)
-      .single();
+    let role = null;
+    if (authData?.user?.id) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', authData.user.id)
+        .maybeSingle();
+      role = profile?.role;
+    }
 
     setIsLoading(false);
 
-    if (profile?.role === 'ADMIN' || profile?.role === 'HOS') {
+    if (role === 'ADMIN' || role === 'HOS') {
       navigate('/admin');
-    } else if (profile?.role === 'TEACHER' || profile?.role === 'CLASS_TR') {
+    } else if (role === 'TEACHER' || role === 'CLASS_TR') {
       navigate('/teacher');
     } else {
       navigate('/');
@@ -101,84 +105,76 @@ export default function Login() {
           </div>
         </div>
 
-        {/* Minimalist Smart ID Visual */}
-        <div className="w-full bg-slate-50 border border-slate-200/70 rounded-2xl p-4 flex items-center gap-4 mb-8 shadow-sm">
-          <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center border border-slate-100 shadow-sm shrink-0">
-            <User className="w-5 h-5 text-slate-400" />
-          </div>
-          <div>
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Assigned ITS</p>
-            <p className={`font-mono text-xl tracking-[0.2em] font-bold ${itsNumber ? 'text-school-navy' : 'text-slate-300'}`}>
-              {itsNumber || '••••••••'}
-            </p>
-          </div>
-        </div>
-
+        {/* Dynamic Auth Error Callout */}
         {authError && (
-          <div className="mb-6 bg-red-50 border border-red-100 p-4 rounded-xl flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-            <p className="text-sm font-bold text-red-700 leading-tight">{authError}</p>
+          <div className="mb-6 p-4 bg-red-50/80 border border-red-200/80 rounded-2xl flex items-center gap-3 text-red-700 animate-in shake duration-300">
+            <AlertCircle className="w-5 h-5 flex-shrink-0 text-red-500" />
+            <p className="text-xs font-bold leading-relaxed">{authError}</p>
           </div>
         )}
 
-        {/* Elegant Form */}
-        <form onSubmit={handleLogin} className="space-y-5 w-full">
+        {/* 3. Streamlined Form Controls */}
+        <form onSubmit={handleLogin} className="space-y-4">
           
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">ITS Number</label>
-            <div className="relative group">
-              <User className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-school-yellow transition-colors" />
+            <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1">ITS ID</label>
+            <div className="relative">
+              <User className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
               <input 
                 type="text" 
-                required
-                value={itsNumber}
-                onChange={(e) => setItsNumber(e.target.value)}
-                placeholder="Enter 8-digit ID"
-                autoComplete="username"
-                className="w-full pl-12 pr-4 py-3.5 bg-white border border-slate-200 rounded-xl text-sm font-bold text-school-navy focus:outline-none focus:border-school-yellow focus:ring-4 focus:ring-school-yellow/10 transition-all shadow-sm placeholder:text-slate-300 placeholder:font-medium"
+                required 
+                value={itsNumber} 
+                onChange={(e) => setItsNumber(e.target.value)} 
+                placeholder="Enter 8-digit ITS" 
+                className="w-full pl-11 pr-4 py-3 bg-amber-50/40 border border-amber-900/10 rounded-xl text-sm font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:border-school-navy focus:bg-white transition-all shadow-sm"
               />
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <div className="flex justify-between items-center ml-1">
-              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Passcode</label>
-            </div>
-            <div className="relative group">
-              <Key className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-school-yellow transition-colors" />
+            <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1">Password</label>
+            <div className="relative">
+              <Key className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
               <input 
-                required 
-                placeholder="••••••••" 
                 type="password" 
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete="current-password"
-                className="w-full pl-12 pr-4 py-3.5 bg-white border border-slate-200 rounded-xl text-sm font-bold text-school-navy focus:outline-none focus:border-school-yellow focus:ring-4 focus:ring-school-yellow/10 transition-all shadow-sm placeholder:text-slate-300" 
+                required 
+                value={password} 
+                onChange={(e) => setPassword(e.target.value)} 
+                placeholder="••••••••" 
+                className="w-full pl-11 pr-4 py-3 bg-amber-50/40 border border-amber-900/10 rounded-xl text-sm font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:border-school-navy focus:bg-white transition-all shadow-sm"
               />
             </div>
           </div>
 
           <button 
-            type="submit"
-            disabled={isLoading || !itsNumber || !password}
-            className="w-full mt-6 flex items-center justify-center gap-2 bg-school-navy hover:bg-slate-800 text-white py-4 rounded-xl text-sm font-bold transition-all shadow-lg disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none disabled:cursor-not-allowed group"
+            type="submit" 
+            disabled={isLoading}
+            className="w-full mt-2 py-3.5 bg-school-navy hover:bg-slate-800 active:scale-[0.99] text-white rounded-xl text-sm font-bold shadow-lg shadow-school-navy/10 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
           >
             {isLoading ? (
-              <div className="w-5 h-5 border-2 border-slate-400 border-t-white rounded-full animate-spin"></div>
+              <span className="flex items-center gap-2">
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                Signing In...
+              </span>
             ) : (
               <>
-                Sign In <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                Sign In to Dashboard
+                <ArrowRight className="w-4 h-4 text-school-yellow" />
               </>
             )}
           </button>
-          
         </form>
 
-        <div className="mt-8 text-center w-full">
-          <a href="#" className="text-[11px] font-bold text-slate-400 hover:text-school-navy transition-colors">Forgot your passcode?</a>
+        {/* 4. Elegant Footer Note */}
+        <div className="mt-8 text-center border-t border-slate-100 pt-6">
+          <p className="text-[11px] font-medium text-slate-400 leading-relaxed">
+            Need credentials or facing issues? <br />
+            Please contact the <span className="font-bold text-slate-600">MSB Administration Office</span>.
+          </p>
         </div>
-        
+
       </div>
+
     </div>
   );
 }

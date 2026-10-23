@@ -4,6 +4,7 @@ import { Award, ShieldAlert, Search, CheckCircle2, User } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 export default function LogPoints() {
+  const [userRole, setUserRole] = useState(null);
   const [students, setStudents] = useState([]);
   const [pointRules, setPointRules] = useState({ Tashjee: [], Tanbeeh: [] });
   const [searchTerm, setSearchTerm] = useState('');
@@ -15,6 +16,12 @@ export default function LogPoints() {
 
   useEffect(() => {
     async function loadData() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+      if (profile) setUserRole(profile.role);
+
       // 1. Fetch Students
       const { data: studentData } = await supabase
         .from('students')
@@ -30,16 +37,29 @@ export default function LogPoints() {
 
       if (rulesData) {
         const rules = { Tashjee: [], Tanbeeh: [] };
-        rulesData.forEach(r => rules[r.type].push(r));
+        rulesData.forEach(r => {
+          if (!rules[r.type]) rules[r.type] = [];
+          rules[r.type].push(r);
+        });
         setPointRules(rules);
       }
     }
     loadData();
   }, []);
 
+  if (userRole === 'PARENT') {
+    return (
+      <div className="max-w-4xl mx-auto h-[60vh] flex flex-col items-center justify-center text-center">
+        <ShieldAlert className="w-16 h-16 text-red-500 mb-4 opacity-50" />
+        <h2 className="text-3xl font-bold text-school-navy">Staff Portal Only</h2>
+        <p className="text-slate-500">Conduct points can only be awarded by teaching staff and administration.</p>
+      </div>
+    );
+  }
+
   const filteredStudents = students.filter(s => 
-    s.full_name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    s.its_number.includes(searchTerm)
+    (s.full_name?.toLowerCase().includes(searchTerm.toLowerCase())) || 
+    (s.its_number?.includes(searchTerm))
   );
 
   const handleSubmit = async (e) => {
@@ -48,25 +68,30 @@ export default function LogPoints() {
     
     setIsSubmitting(true);
     
-    const reasonData = pointRules[logType].find(opt => opt.reason === selectedReason);
+    const reasonData = (pointRules[logType] || []).find(opt => opt.reason === selectedReason);
+    const pointsVal = reasonData?.points !== undefined ? reasonData.points : 1;
     const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setIsSubmitting(false);
+      return;
+    }
 
     const { error } = await supabase.from('behavior_logs').insert([{ 
       student_id: selectedStudent.id,
       teacher_id: user.id,
       log_type: logType,
-      points: reasonData.points,
+      points: pointsVal,
       reason: selectedReason
     }]);
 
     setIsSubmitting(false);
 
     if (error) {
+      console.error("Failed to log points:", error);
       alert("Failed to log points.");
     } else {
       setSuccessMsg(`Successfully awarded ${logType} to ${selectedStudent.full_name}!`);
 
-      // --- 🚀 NEW TARGETED NOTIFICATION TRIGGER ---
       if (selectedStudent.parent_id) {
         fetch('/api/notify', {
           method: 'POST',
@@ -75,7 +100,8 @@ export default function LogPoints() {
             userIds: [selectedStudent.parent_id],
             title: `Conduct Update: ${logType}`,
             message: `${selectedStudent.full_name} received a ${logType} point for: ${selectedReason}.`,
-            url: '/' // Route parent back to dashboard
+            redirect_url: '/',
+            url: '/'
           })
         }).catch(console.error);
       }
@@ -137,10 +163,13 @@ export default function LogPoints() {
                 </div>
                 <div>
                   <p className="text-sm font-bold text-school-navy">{student.full_name}</p>
-                  <p className="text-xs text-slate-400">{student.classes?.class_name} • ITS: {student.its_number}</p>
+                  <p className="text-xs text-slate-400">{student.classes?.class_name || 'Class'} • ITS: {student.its_number}</p>
                 </div>
               </div>
             ))}
+            {filteredStudents.length === 0 && (
+              <div className="p-6 text-center text-slate-400 text-sm">No students match your search.</div>
+            )}
           </div>
         </div>
 
@@ -189,7 +218,7 @@ export default function LogPoints() {
                   required
                 >
                   <option value="" disabled>-- Select a reason --</option>
-                  {pointRules[logType].map((opt, idx) => (
+                  {(pointRules[logType] || []).map((opt, idx) => (
                     <option key={idx} value={opt.reason}>
                       {opt.reason} ({logType === 'Tashjee' ? '+' : '-'}{opt.points} PTS)
                     </option>

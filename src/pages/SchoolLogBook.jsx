@@ -1,6 +1,6 @@
 // src/pages/SchoolLogBook.jsx
 import React, { useState, useEffect } from 'react';
-import { Book, Search, Filter, TrendingUp, AlertTriangle, Clock, User, Award, Trash2 } from 'lucide-react';
+import { Book, Search, Filter, TrendingUp, AlertTriangle, Clock, User, Award, Trash2, ShieldAlert } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 export default function SchoolLogBook() {
@@ -8,34 +8,61 @@ export default function SchoolLogBook() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('All');
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [userRole, setUserRole] = useState(null);
 
   const fetchLogs = async () => {
     setIsLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
     
     const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-    setIsAdmin(profile?.role === 'ADMIN' || profile?.role === 'HOS');
+    if (profile) setUserRole(profile.role);
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('behavior_logs')
       .select('id, log_type, points, reason, logged_at, students(full_name, its_number, classes(class_name)), profiles(full_name)')
       .order('logged_at', { ascending: false }).limit(100);
 
-    if (data) setLogs(data);
+    if (!error && data) setLogs(data);
     setIsLoading(false);
   };
 
   useEffect(() => { fetchLogs(); }, []);
 
+  const isAdmin = userRole === 'ADMIN' || userRole === 'HOS';
+
+  if (!isLoading && userRole === 'PARENT') {
+    return (
+      <div className="max-w-4xl mx-auto h-[60vh] flex flex-col items-center justify-center text-center">
+        <ShieldAlert className="w-16 h-16 text-red-500 mb-4 opacity-50" />
+        <h2 className="text-3xl font-bold text-school-navy">Access Restricted</h2>
+        <p className="text-slate-500">The Master Log Book is reserved for faculty and administration.</p>
+      </div>
+    );
+  }
+
   const handleDeleteLog = async (id) => {
     if (!window.confirm("Permanently delete this behavior log? This will affect the student's net score.")) return;
     const { error } = await supabase.from('behavior_logs').delete().eq('id', id);
-    if (!error) setLogs(logs.filter(log => log.id !== id));
+    if (!error) {
+      setLogs(logs.filter(log => log.id !== id));
+    } else {
+      console.error("Failed to delete log:", error);
+      alert("Failed to delete log entry.");
+    }
   };
 
   const filteredLogs = logs.filter(log => {
-    const matchesSearch = log.students?.full_name.toLowerCase().includes(searchTerm.toLowerCase()) || log.profiles?.full_name.toLowerCase().includes(searchTerm.toLowerCase()) || log.reason.toLowerCase().includes(searchTerm.toLowerCase());
+    const term = searchTerm.toLowerCase();
+    const studentName = log.students?.full_name?.toLowerCase() || '';
+    const teacherName = log.profiles?.full_name?.toLowerCase() || '';
+    const reasonText = log.reason?.toLowerCase() || '';
+    const its = log.students?.its_number || '';
+
+    const matchesSearch = studentName.includes(term) || teacherName.includes(term) || reasonText.includes(term) || its.includes(term);
     const matchesFilter = filterType === 'All' || log.log_type === filterType;
     return matchesSearch && matchesFilter;
   });
@@ -85,10 +112,27 @@ export default function SchoolLogBook() {
                         {log.log_type === 'Tashjee' ? <TrendingUp className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
                       </span>
                     </td>
-                    <td className="p-4"><p className="text-sm font-bold text-school-navy">{log.students?.full_name}</p><p className="text-xs text-slate-500 font-mono">{log.students?.its_number}</p></td>
-                    <td className="p-4"><span className="bg-slate-100 text-slate-600 px-2 py-1 rounded text-xs font-bold">{log.students?.classes?.class_name || 'N/A'}</span></td>
-                    <td className="p-4 max-w-xs"><p className="text-sm font-bold text-slate-700"><span className={log.log_type === 'Tashjee' ? 'text-emerald-600' : 'text-red-600'}>{log.log_type === 'Tashjee' ? '+' : '-'}{log.points} Pts</span></p><p className="text-xs text-slate-500 truncate mt-0.5">{log.reason}</p></td>
-                    <td className="p-4"><div className="flex items-center gap-2"><div className="w-6 h-6 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-500"><User className="w-3 h-3" /></div><span className="text-sm font-medium text-slate-600">{log.profiles?.full_name}</span></div></td>
+                    <td className="p-4">
+                      <p className="text-sm font-bold text-school-navy">{log.students?.full_name || 'Unknown Student'}</p>
+                      <p className="text-xs text-slate-500 font-mono">{log.students?.its_number || 'No ITS'}</p>
+                    </td>
+                    <td className="p-4">
+                      <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded text-xs font-bold">{log.students?.classes?.class_name || 'N/A'}</span>
+                    </td>
+                    <td className="p-4 max-w-xs">
+                      <p className="text-sm font-bold text-slate-700">
+                        <span className={log.log_type === 'Tashjee' ? 'text-emerald-600' : 'text-red-600'}>{log.log_type === 'Tashjee' ? '+' : '-'}{log.points} Pts</span>
+                      </p>
+                      <p className="text-xs text-slate-500 truncate mt-0.5">{log.reason}</p>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-500">
+                          <User className="w-3 h-3" />
+                        </div>
+                        <span className="text-sm font-medium text-slate-600">{log.profiles?.full_name || 'Staff Member'}</span>
+                      </div>
+                    </td>
                     <td className="p-4 text-right flex flex-col items-end justify-center">
                       <p className="text-sm font-bold text-slate-600">{new Date(log.logged_at).toLocaleDateString()}</p>
                       <p className="text-xs text-slate-400 flex items-center justify-end gap-1 mt-0.5"><Clock className="w-3 h-3" /> {new Date(log.logged_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>

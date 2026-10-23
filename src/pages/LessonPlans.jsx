@@ -20,22 +20,33 @@ export default function LessonPlans() {
   const fetchLessonData = async () => {
     setIsLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
     
     // 1. Get Role
     const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
     if (profile) setUserRole(profile.role);
+    const isAdmin = profile?.role === 'ADMIN' || profile?.role === 'HOS';
 
     // 2. Fetch Classes for the dropdown
     const { data: classData } = await supabase.from('classes').select('id, class_name').order('class_name');
     if (classData) setClasses(classData);
 
-    // 3. Fetch Plans (RLS automatically filters: Teachers see theirs, Admins see all)
-    const { data: planData } = await supabase
+    // 3. Fetch Plans (Teachers only see theirs, Admins see all)
+    let plansQuery = supabase
       .from('lesson_plans')
       .select('*, classes(class_name), profiles(full_name)')
       .order('plan_date', { ascending: false });
 
-    if (planData) setPlans(planData);
+    if (!isAdmin) {
+      plansQuery = plansQuery.eq('teacher_id', user.id);
+    }
+
+    const { data: planData, error } = await plansQuery;
+    if (!error && planData) setPlans(planData);
+
     setIsLoading(false);
   };
 
@@ -47,6 +58,10 @@ export default function LessonPlans() {
     e.preventDefault();
     setIsSubmitting(true);
     const { data: { user } } = await supabase.auth.getUser();
+    if (!user?.id) {
+      setIsSubmitting(false);
+      return;
+    }
 
     const { error } = await supabase.from('lesson_plans').insert([{
       teacher_id: user.id,
@@ -62,6 +77,7 @@ export default function LessonPlans() {
       setClassId(''); setSubject(''); setTopic(''); setContent(''); setPlanDate('');
       fetchLessonData(); // Refresh UI
     } else {
+      console.error("Failed to submit lesson plan:", error);
       alert("Failed to submit lesson plan.");
     }
     setIsSubmitting(false);
@@ -69,12 +85,17 @@ export default function LessonPlans() {
 
   const updateStatus = async (id, newStatus) => {
     const { error } = await supabase.from('lesson_plans').update({ status: newStatus }).eq('id', id);
-    if (!error) fetchLessonData();
+    if (!error) {
+      fetchLessonData();
+    } else {
+      console.error("Failed to update status:", error);
+      alert("Failed to update lesson plan status.");
+    }
   };
 
   if (isLoading) return <div className="max-w-6xl mx-auto h-96 flex items-center justify-center"><div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div></div>;
 
-  // 🔴 Prevent Parents from viewing this page entirely
+  // Prevent Parents from viewing this page entirely
   if (userRole === 'PARENT') {
     return (
       <div className="max-w-4xl mx-auto h-[60vh] flex flex-col items-center justify-center text-center">
@@ -184,7 +205,7 @@ export default function LessonPlans() {
 
                 <div className="mt-4 flex items-center justify-between">
                   <div className="flex items-center gap-2 text-xs font-bold text-slate-400">
-                    <User className="w-4 h-4" /> Authored by {plan.profiles?.full_name}
+                    <User className="w-4 h-4" /> Authored by {plan.profiles?.full_name || 'Staff Member'}
                   </div>
                   
                   {/* Admin Actions */}
