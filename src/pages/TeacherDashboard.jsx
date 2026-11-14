@@ -93,7 +93,7 @@ export default function TeacherDashboard() {
   }, [timeSlots.length]); // Dependency ensures interval gets the populated array
 
   const renderCellContent = (day, slot) => {
-    if (slot.id === 'P0') return <div className="text-sm font-black text-indigo-700 bg-indigo-50/50 h-full flex items-center justify-center">Dua</div>;
+    if (slot.id === 'P0') return <div className="text-sm font-black text-indigo-700 bg-indigo-50/50 h-full flex items-center justify-center">{slot.label}</div>;
     if (slot.is_break) return null; // Breaks handled by row style
 
     const entry = timetable[`${day}_${slot.id}`];

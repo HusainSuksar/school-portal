@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Written by scripts/reset-demo.mjs; holds the demo password
+demo-logins.md

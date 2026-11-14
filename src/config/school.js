@@ -31,6 +31,11 @@ export const SCHOOL = {
 export const ID_LABEL = 'ID';
 export const ID_LABEL_FULL = 'ID Number';
 
+// Logins are stored as "<ID number>@<this domain>"; people only ever type the
+// ID number. Changing this stops every existing login from working, so only
+// change it on an empty database. api/_lib/admin.js holds the same value.
+export const LOGIN_EMAIL_DOMAIN = 'school.local';
+
 // Show the Hijri (Islamic calendar) date next to the Gregorian date on the
 // login page and in the Academic Calendar. Set to true for schools that
 // follow both calendars.

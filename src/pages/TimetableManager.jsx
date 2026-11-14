@@ -63,7 +63,7 @@ export default function TimetableManager() {
   };
 
   const handleCellClick = (day, slot) => {
-    if (slot.is_break || slot.id === 'P0') return; // Breaks and Dua are locked
+    if (slot.is_break || slot.id === 'P0') return; // Breaks and the opening slot are locked
     setEditingCell({ day, slot_id: slot.id });
   };
 
@@ -129,7 +129,7 @@ export default function TimetableManager() {
   };
 
   const renderCellContent = (day, slot) => {
-    if (slot.id === 'P0') return <div className="text-xs font-bold text-indigo-700 bg-indigo-50 p-2 rounded">Dua</div>;
+    if (slot.id === 'P0') return <div className="text-xs font-bold text-indigo-700 bg-indigo-50 p-2 rounded">{slot.label}</div>;
     if (slot.is_break) return <div className="text-xs font-bold text-slate-500 bg-slate-100 p-2 rounded">{slot.label}</div>;
 
     const entry = timetable[`${day}_${slot.id}`];

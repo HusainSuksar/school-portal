@@ -9,6 +9,10 @@ export const MAX_BATCH = 50;
 // Password given to newly provisioned accounts (users must change it on first login).
 const DEFAULT_PASSWORD = process.env.DEFAULT_ACCOUNT_PASSWORD || '786110';
 
+// Logins are stored as "<ID number>@<this domain>". Must match LOGIN_EMAIL_DOMAIN
+// in src/config/school.js, which the login page uses.
+const LOGIN_EMAIL_DOMAIN = 'school.local';
+
 let adminClient;
 
 // Service-role client (bypasses RLS). Built lazily so a missing env var produces
@@ -103,7 +107,7 @@ function isDuplicateUserError(error) {
 // the matching profile (null when there is no profile to resolve it from).
 export async function createLoginAccount(admin, itsNumber) {
   const { data, error } = await admin.auth.admin.createUser({
-    email: `${itsNumber}@msb.local`,
+    email: `${itsNumber}@${LOGIN_EMAIL_DOMAIN}`,
     password: DEFAULT_PASSWORD,
     email_confirm: true,
   });

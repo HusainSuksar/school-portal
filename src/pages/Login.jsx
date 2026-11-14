@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Key, User, ArrowRight, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { SCHOOL, ID_LABEL, ID_LABEL_FULL, SHOW_HIJRI_DATE } from '../config/school';
+import { SCHOOL, ID_LABEL, ID_LABEL_FULL, SHOW_HIJRI_DATE, LOGIN_EMAIL_DOMAIN } from '../config/school';
 
 export default function Login() {
   const [itsNumber, setItsNumber] = useState('');
@@ -40,7 +40,7 @@ export default function Login() {
     setIsLoading(true);
     setAuthError(null);
     
-    const formattedEmail = `${itsNumber.trim()}@msb.local`;
+    const formattedEmail = `${itsNumber.trim()}@${LOGIN_EMAIL_DOMAIN}`;
 
     const { data: authData, error } = await supabase.auth.signInWithPassword({
       email: formattedEmail,
