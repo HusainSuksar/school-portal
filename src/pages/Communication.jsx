@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Megaphone, Send, Trash2, Users, CheckCircle2, Clock, Globe, PhoneCall, MessageSquare, History, UserPlus, Phone } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { sendBroadcast } from '../lib/apiClient';
 
 export default function Communication() {
   const [activeTab, setActiveTab] = useState('announcements'); // announcements, queue, history
@@ -118,11 +119,7 @@ export default function Communication() {
     if (!error) { 
       // 2. Call your Serverless Function to fire the Push Notifications
       try {
-        await fetch('/api/broadcast', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ title, message, targetAudience })
-        });
+        await sendBroadcast({ title, message, targetAudience });
       } catch (pushError) {
         console.error("Failed to trigger push API:", pushError);
       }

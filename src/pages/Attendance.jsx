@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Users, Save, CheckCircle2, AlertCircle, Lock, Unlock, Clock } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { notifyUsers } from '../lib/apiClient';
 
 export default function Attendance() {
   const [isLoading, setIsLoading] = useState(true);
@@ -185,16 +186,12 @@ export default function Attendance() {
 
       if (absentStudents.length > 0) {
         absentStudents.forEach(student => {
-          fetch('/api/notify', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              userIds: [student.parent_id],
-              title: 'Absence Alert',
-              message: `${student.full_name} was marked absent today (${new Date(selectedDate).toLocaleDateString()}).`,
-              redirect_url: '/',
-              url: '/'
-            })
+          notifyUsers({
+            userIds: [student.parent_id],
+            title: 'Absence Alert',
+            message: `${student.full_name} was marked absent today (${new Date(selectedDate).toLocaleDateString()}).`,
+            redirect_url: '/',
+            url: '/'
           }).catch(console.error);
         });
       }

@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Award, ShieldAlert, Search, CheckCircle2, User } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { notifyUsers } from '../lib/apiClient';
 
 export default function LogPoints() {
   const [userRole, setUserRole] = useState(null);
@@ -93,16 +94,12 @@ export default function LogPoints() {
       setSuccessMsg(`Successfully awarded ${logType} to ${selectedStudent.full_name}!`);
 
       if (selectedStudent.parent_id) {
-        fetch('/api/notify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userIds: [selectedStudent.parent_id],
-            title: `Conduct Update: ${logType}`,
-            message: `${selectedStudent.full_name} received a ${logType} point for: ${selectedReason}.`,
-            redirect_url: '/',
-            url: '/'
-          })
+        notifyUsers({
+          userIds: [selectedStudent.parent_id],
+          title: `Conduct Update: ${logType}`,
+          message: `${selectedStudent.full_name} received a ${logType} point for: ${selectedReason}.`,
+          redirect_url: '/',
+          url: '/'
         }).catch(console.error);
       }
 

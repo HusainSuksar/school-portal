@@ -64,6 +64,22 @@ export async function requireRole(req, res, allowedRoles) {
   return { id: data.user.id, role: profile.role };
 }
 
+export const STAFF_ROLES = ['ADMIN', 'HOS', 'TEACHER', 'CLASS_TR'];
+export const ALL_ROLES = [...STAFF_ROLES, 'PARENT'];
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function isUuid(value) {
+  return typeof value === 'string' && UUID_PATTERN.test(value);
+}
+
+// Notification links must stay inside the portal: a path like "/help-centre".
+// Anything else (full URLs, "//host", javascript:) falls back to the home page.
+export function safePath(value) {
+  const path = text(value);
+  return /^\/(?![/\\])[\w\-./?=&%#]*$/.test(path) ? path : '/';
+}
+
 // Trimmed string, or '' for null/undefined.
 export function text(value) {
   return value === null || value === undefined ? '' : String(value).trim();

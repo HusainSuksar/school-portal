@@ -1,6 +1,11 @@
 // api/broadcast.js
+// Sends an announcement notification to everyone, all parents, or all staff. ADMIN / HOS only.
 import webpush from 'web-push';
-import { createClient } from '@supabase/supabase-js';
+import { getAdminClient, requireRole, text } from './_lib/admin.js';
+
+const AUDIENCES = ['ALL', 'PARENTS', 'STAFF'];
+const MAX_TITLE = 120;
+const MAX_MESSAGE = 2000;
 
 if (process.env.VITE_PUBLIC_VAPID_KEY && process.env.PRIVATE_VAPID_KEY) {
   webpush.setVapidDetails(
@@ -10,18 +15,28 @@ if (process.env.VITE_PUBLIC_VAPID_KEY && process.env.PRIVATE_VAPID_KEY) {
   );
 }
 
-const supabaseAdmin = createClient(
-  process.env.VITE_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY 
-);
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
   try {
-    const { title, message, targetAudience } = req.body;
+    // 0. Only administrators and heads of school may broadcast
+    const caller = await requireRole(req, res, ['ADMIN', 'HOS']);
+    if (!caller) return;
+
+    const supabaseAdmin = getAdminClient();
+    const body = req.body || {};
+    const title = text(body.title).slice(0, MAX_TITLE);
+    const message = text(body.message).slice(0, MAX_MESSAGE);
+    const targetAudience = text(body.targetAudience) || 'ALL';
+
+    if (!title || !message) {
+      return res.status(400).json({ error: 'A title and a message are required.' });
+    }
+    if (!AUDIENCES.includes(targetAudience)) {
+      return res.status(400).json({ error: 'Unknown target audience.' });
+    }
 
     // 1. Fetch matching user profiles and write to in_app_notifications
     let profileQuery = supabaseAdmin.from('profiles').select('id');

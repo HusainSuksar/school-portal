@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { CalendarClock, CheckCircle2, XCircle, Clock, Send, ShieldAlert, User, Users } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { notifyUsers } from '../lib/apiClient';
 
 export default function LeaveApprovals() {
   const [userRole, setUserRole] = useState(null);
@@ -103,16 +104,12 @@ export default function LeaveApprovals() {
       
       const { data: admins } = await supabase.from('profiles').select('id').in('role', ['ADMIN', 'HOS']);
       if (admins && admins.length > 0) {
-        fetch('/api/notify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userIds: admins.map(a => a.id),
-            title: 'Staff Leave Request',
-            message: `A new staff leave request is pending approval.`,
-            redirect_url: '/leave-approvals',
-            url: '/leave-approvals'
-          })
+        notifyUsers({
+          userIds: admins.map(a => a.id),
+          title: 'Staff Leave Request',
+          message: `A new staff leave request is pending approval.`,
+          redirect_url: '/leave-approvals',
+          url: '/leave-approvals'
         }).catch(console.error);
       }
       
@@ -136,16 +133,12 @@ export default function LeaveApprovals() {
       const targetUserId = tableName === 'student_leaves' ? updatedRecord.parent_id : updatedRecord.teacher_id;
       
       if (targetUserId) {
-        fetch('/api/notify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userIds: [targetUserId],
-            title: `Leave Request ${newStatus}`,
-            message: `Your leave request has been ${newStatus.toLowerCase()}.`,
-            redirect_url: tableName === 'student_leaves' ? '/request-leave' : '/leave-approvals',
-            url: tableName === 'student_leaves' ? '/request-leave' : '/leave-approvals'
-          })
+        notifyUsers({
+          userIds: [targetUserId],
+          title: `Leave Request ${newStatus}`,
+          message: `Your leave request has been ${newStatus.toLowerCase()}.`,
+          redirect_url: tableName === 'student_leaves' ? '/request-leave' : '/leave-approvals',
+          url: tableName === 'student_leaves' ? '/request-leave' : '/leave-approvals'
         }).catch(console.error);
       }
 

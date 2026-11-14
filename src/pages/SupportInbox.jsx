@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Inbox, CheckCircle2, Clock, AlertTriangle, User, MessageSquare, Phone, Send, ChevronRight, Archive, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { notifyUsers } from '../lib/apiClient';
 
 export default function SupportInbox() {
   const [tickets, setTickets] = useState([]);
@@ -95,15 +96,11 @@ export default function SupportInbox() {
 
       // Notify the ticket creator
       if (activeTicket.created_by) {
-        fetch('/api/notify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userId: activeTicket.created_by,
-            title: 'Support Ticket Status Updated',
-            message: `Your ticket "${activeTicket.subject}" status was changed to ${newStatus}.`,
-            url: '/help'
-          })
+        notifyUsers({
+          userId: activeTicket.created_by,
+          title: 'Support Ticket Status Updated',
+          message: `Your ticket "${activeTicket.subject}" status was changed to ${newStatus}.`,
+          url: '/help-centre'
         }).catch(e => console.error("Notification dispatch failed:", e));
       }
     }
@@ -138,15 +135,11 @@ export default function SupportInbox() {
 
       // Notify the ticket creator if the replier is not the ticket creator
       if (activeTicket.created_by && activeTicket.created_by !== currentUser.id) {
-        fetch('/api/notify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userId: activeTicket.created_by,
-            title: 'New Reply on Support Ticket',
-            message: `Support team replied to: "${activeTicket.subject}".`,
-            url: '/help'
-          })
+        notifyUsers({
+          userId: activeTicket.created_by,
+          title: 'New Reply on Support Ticket',
+          message: `Support team replied to: "${activeTicket.subject}".`,
+          url: '/help-centre'
         }).catch(e => console.error("Notification dispatch failed:", e));
       }
 

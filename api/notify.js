@@ -1,6 +1,20 @@
 // api/notify.js
+// Sends an in-app + push notification to specific users.
+// Requires a signed-in portal user. Staff may notify anyone; parents may only notify staff.
 import webpush from 'web-push';
-import { createClient } from '@supabase/supabase-js';
+import {
+  getAdminClient,
+  requireRole,
+  ALL_ROLES,
+  STAFF_ROLES,
+  isUuid,
+  safePath,
+  text,
+} from './_lib/admin.js';
+
+const MAX_TARGETS = 200;
+const MAX_TITLE = 120;
+const MAX_MESSAGE = 500;
 
 // Configure Web Push Keys safely
 if (process.env.VITE_PUBLIC_VAPID_KEY && process.env.PRIVATE_VAPID_KEY) {
@@ -11,25 +25,49 @@ if (process.env.VITE_PUBLIC_VAPID_KEY && process.env.PRIVATE_VAPID_KEY) {
   );
 }
 
-// Initialize Admin Database Client (Bypasses RLS)
-const supabaseAdmin = createClient(
-  process.env.VITE_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
   try {
-    const { userIds, title, message, url } = req.body;
+    // 0. Only signed-in portal users may send notifications
+    const caller = await requireRole(req, res, ALL_ROLES);
+    if (!caller) return;
 
-    // Remove any duplicate IDs or nulls
-    const uniqueTargets = [...new Set(userIds)].filter(Boolean);
+    const supabaseAdmin = getAdminClient();
+    const body = req.body || {};
+
+    // Accept `userIds: [...]` or a single `userId`; drop duplicates and anything that is not an id
+    const requestedIds = Array.isArray(body.userIds) ? body.userIds : body.userId ? [body.userId] : [];
+    const uniqueTargets = [...new Set(requestedIds)].filter(isUuid);
 
     if (uniqueTargets.length === 0) {
       return res.status(200).json({ success: true, message: 'No targets provided.' });
+    }
+    if (uniqueTargets.length > MAX_TARGETS) {
+      return res.status(400).json({ error: `Too many recipients in one request (max ${MAX_TARGETS}).` });
+    }
+
+    const title = text(body.title).slice(0, MAX_TITLE);
+    const message = text(body.message).slice(0, MAX_MESSAGE);
+    if (!title || !message) {
+      return res.status(400).json({ error: 'A title and a message are required.' });
+    }
+    const url = safePath(body.url || body.redirect_url);
+
+    // Parents can reach school staff (leave requests, support tickets) but not other families
+    if (caller.role === 'PARENT') {
+      const { data: targets, error: targetError } = await supabaseAdmin
+        .from('profiles')
+        .select('id, role')
+        .in('id', uniqueTargets);
+      if (targetError) throw new Error(targetError.message);
+
+      const staffIds = new Set((targets || []).filter((t) => STAFF_ROLES.includes(t.role)).map((t) => t.id));
+      if (uniqueTargets.some((id) => !staffIds.has(id))) {
+        return res.status(403).json({ error: 'You can only send notifications to school staff.' });
+      }
     }
 
     // 1. Log to the Portal Inbox (in_app_notifications)
@@ -37,7 +75,7 @@ export default async function handler(req, res) {
       user_id: id,
       title,
       message,
-      redirect_url: url || '/',
+      redirect_url: url,
     }));
     const { error: insertError } = await supabaseAdmin.from('in_app_notifications').insert(inAppPayload);
     if (insertError) {
@@ -59,7 +97,7 @@ export default async function handler(req, res) {
       const pushPromises = subscriptions.map((sub) =>
         webpush.sendNotification(
           sub.subscription,
-          JSON.stringify({ title, message, url: url || '/' })
+          JSON.stringify({ title, message, url })
         ).catch((err) => console.error('Push delivery failed for device:', err.statusCode))
       );
       await Promise.all(pushPromises);

@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { LifeBuoy, PlusCircle, MessageSquare, Send, Clock, User, CheckCircle2, AlertTriangle, Loader2, ArrowLeft, ChevronDown } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { notifyUsers } from '../lib/apiClient';
 
 export default function HelpCentre() {
   const [tickets, setTickets] = useState([]);
@@ -82,16 +83,12 @@ export default function HelpCentre() {
       setTickets(tickets.map(t => t.id === activeTicket.id ? { ...t, status: newStatus } : t));
       
       // Target Notification to the parent that their ticket status changed
-      fetch('/api/notify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userIds: [activeTicket.created_by],
-          title: 'Ticket Status Updated',
-          message: `Your ticket "${activeTicket.subject}" has been marked as ${newStatus}.`,
-          redirect_url: '/help-centre',
-          url: '/help-centre'
-        })
+      notifyUsers({
+        userIds: [activeTicket.created_by],
+        title: 'Ticket Status Updated',
+        message: `Your ticket "${activeTicket.subject}" has been marked as ${newStatus}.`,
+        redirect_url: '/help-centre',
+        url: '/help-centre'
       }).catch(console.error);
     } else {
       console.error("Failed to update ticket status:", error);
@@ -149,16 +146,12 @@ export default function HelpCentre() {
       if (admins) admins.forEach(a => notifyIds.push(a.id));
 
       if (notifyIds.length > 0) {
-        fetch('/api/notify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userIds: notifyIds,
-            title: 'New Support Ticket',
-            message: data.subject,
-            redirect_url: '/help-centre',
-            url: '/help-centre'
-          })
+        notifyUsers({
+          userIds: notifyIds,
+          title: 'New Support Ticket',
+          message: data.subject,
+          redirect_url: '/help-centre',
+          url: '/help-centre'
         }).catch(console.error);
       }
     } else {
@@ -194,16 +187,12 @@ export default function HelpCentre() {
       }
 
       if (targetIds.length > 0) {
-        fetch('/api/notify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userIds: targetIds,
-            title: 'New Reply on Ticket',
-            message: `Re: ${activeTicket.subject}`,
-            redirect_url: '/help-centre',
-            url: '/help-centre'
-          })
+        notifyUsers({
+          userIds: targetIds,
+          title: 'New Reply on Ticket',
+          message: `Re: ${activeTicket.subject}`,
+          redirect_url: '/help-centre',
+          url: '/help-centre'
         }).catch(console.error);
       }
     } else {

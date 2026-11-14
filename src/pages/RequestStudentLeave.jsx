@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { CalendarClock, Send, Clock, CheckCircle2, AlertCircle, FileText, XCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { notifyUsers } from '../lib/apiClient';
 
 export default function RequestStudentLeave() {
   const [isLoading, setIsLoading] = useState(true);
@@ -90,16 +91,12 @@ export default function RequestStudentLeave() {
       }
 
       if (recipientIds.size > 0) {
-        fetch('/api/notify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userIds: Array.from(recipientIds),
-            title: 'New Student Leave Request',
-            message: `Leave request for ${targetStudent?.full_name || 'a student'} is pending approval.`,
-            redirect_url: '/leave-approvals',
-            url: '/leave-approvals'
-          })
+        notifyUsers({
+          userIds: Array.from(recipientIds),
+          title: 'New Student Leave Request',
+          message: `Leave request for ${targetStudent?.full_name || 'a student'} is pending approval.`,
+          redirect_url: '/leave-approvals',
+          url: '/leave-approvals'
         }).catch(console.error);
       }
 
