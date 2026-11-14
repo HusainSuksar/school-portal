@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Book, Search, Filter, TrendingUp, AlertTriangle, Clock, User, Award, Trash2, ShieldAlert } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { ID_LABEL } from '../config/school';
 
 export default function SchoolLogBook() {
   const [logs, setLogs] = useState([]);
@@ -114,7 +115,7 @@ export default function SchoolLogBook() {
                     </td>
                     <td className="p-4">
                       <p className="text-sm font-bold text-school-navy">{log.students?.full_name || 'Unknown Student'}</p>
-                      <p className="text-xs text-slate-500 font-mono">{log.students?.its_number || 'No ITS'}</p>
+                      <p className="text-xs text-slate-500 font-mono">{log.students?.its_number || `No ${ID_LABEL}`}</p>
                     </td>
                     <td className="p-4">
                       <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded text-xs font-bold">{log.students?.classes?.class_name || 'N/A'}</span>

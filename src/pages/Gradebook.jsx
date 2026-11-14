@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BookOpen, Users, Save, CheckCircle2, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { ID_LABEL_FULL } from '../config/school';
 
 export default function Gradebook() {
   const [isLoading, setIsLoading] = useState(true);
@@ -259,7 +260,7 @@ export default function Gradebook() {
                   <tr className="bg-white border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500">
                     <th className="p-4 font-bold w-16">No.</th>
                     <th className="p-4 font-bold">Student Name</th>
-                    <th className="p-4 font-bold">ITS Number</th>
+                    <th className="p-4 font-bold">{ID_LABEL_FULL}</th>
                     <th className="p-4 font-bold text-right w-48">{isLetterGrading ? 'Letter Grade' : 'Numeric Mark (%)'}</th>
                   </tr>
                 </thead>

@@ -417,7 +417,7 @@ export default function AcademicMapping() {
                         <input
                           type="text"
                           autoFocus
-                          placeholder="e.g. Advanced Arabic"
+                          placeholder="e.g. Advanced Mathematics"
                           value={newSubjectName}
                           onChange={(e) => setNewSubjectName(e.target.value)}
                           className="border border-slate-300 rounded-lg py-1.5 px-3 text-sm font-bold text-school-navy focus:border-indigo-500 focus:outline-none"

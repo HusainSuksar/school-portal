@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Users, UserPlus, Search, CheckCircle2, AlertCircle, Trash2, ArrowRightLeft, ShieldAlert } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { ID_LABEL, ID_LABEL_FULL } from '../config/school';
 
 export default function ManageStudents() {
   const [activeTab, setActiveTab] = useState('directory'); // 'directory', 'enrollment', 'migration'
@@ -67,7 +68,7 @@ export default function ManageStudents() {
     setStatusMsg({ type: '', text: '' });
 
     if (!/^\d{8}$/.test(itsNumber.trim())) {
-      setStatusMsg({ type: 'error', text: 'ITS Number must be exactly 8 digits containing only numbers.' });
+      setStatusMsg({ type: 'error', text: `${ID_LABEL_FULL} must be exactly 8 digits containing only numbers.` });
       setIsSubmitting(false);
       return;
     }
@@ -82,7 +83,7 @@ export default function ManageStudents() {
       setTimeout(() => setStatusMsg({ type: '', text: '' }), 4000);
     } catch (error) {
       console.error("Enrollment error:", error);
-      setStatusMsg({ type: 'error', text: error.code === '23505' ? 'Student with this ITS already exists.' : 'Failed to enroll student.' });
+      setStatusMsg({ type: 'error', text: error.code === '23505' ? `Student with this ${ID_LABEL} already exists.` : 'Failed to enroll student.' });
     } finally {
       setIsSubmitting(false);
     }
@@ -169,7 +170,7 @@ export default function ManageStudents() {
               <h3 className="font-bold text-school-navy">Master Directory ({students.length})</h3>
               <div className="relative w-72">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input type="text" placeholder="Search by name or ITS..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500" />
+                <input type="text" placeholder={`Search by name or ${ID_LABEL}...`} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500" />
               </div>
             </div>
             <div className="flex-1 overflow-y-auto">
@@ -179,7 +180,7 @@ export default function ManageStudents() {
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500 sticky top-0">
-                      <th className="p-4 font-bold">ITS Number</th>
+                      <th className="p-4 font-bold">{ID_LABEL_FULL}</th>
                       <th className="p-4 font-bold">Student Name</th>
                       <th className="p-4 font-bold">Assigned Class</th>
                       <th className="p-4 font-bold text-right">Actions</th>
@@ -209,7 +210,7 @@ export default function ManageStudents() {
         {activeTab === 'enrollment' && (
           <form onSubmit={handleEnroll} className="max-w-lg space-y-5">
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">ITS Number</label>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">{ID_LABEL_FULL}</label>
               <input type="text" required value={itsNumber} onChange={(e) => setItsNumber(e.target.value)} placeholder="e.g. 50000004" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg text-sm font-mono focus:outline-none focus:border-indigo-500" />
             </div>
             <div>

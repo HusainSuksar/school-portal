@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Calendar, Award, BookOpen, Clock, ChevronDown, Activity, CheckCircle2, AlertCircle, Shield, Star } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { ID_LABEL } from '../config/school';
 
 const getRankBadge = (netPoints) => {
   let badge = { title: 'Unranked', color: 'bg-slate-100 text-slate-500 border-slate-200', icon: 'text-slate-400' };
@@ -145,7 +146,7 @@ export default function ParentDashboard() {
               
               <div className="pt-4">
                 <h3 className="text-xl font-bold text-school-navy leading-tight">{activeChild?.full_name}</h3>
-                <p className="text-sm text-indigo-600 font-bold mt-0.5">ITS: {activeChild?.its_number}</p>
+                <p className="text-sm text-indigo-600 font-bold mt-0.5">{ID_LABEL}: {activeChild?.its_number}</p>
                 
                 <div className="mt-6 pt-4 border-t border-slate-100 space-y-3">
                   <div>

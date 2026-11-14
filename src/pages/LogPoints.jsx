@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Award, ShieldAlert, Search, CheckCircle2, User } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { ID_LABEL } from '../config/school';
 import { notifyUsers } from '../lib/apiClient';
 
 export default function LogPoints() {
@@ -138,7 +139,7 @@ export default function LogPoints() {
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input 
                 type="text" 
-                placeholder="Search by name or ITS..." 
+                placeholder={`Search by name or ${ID_LABEL}...`} 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 shadow-sm"
@@ -160,7 +161,7 @@ export default function LogPoints() {
                 </div>
                 <div>
                   <p className="text-sm font-bold text-school-navy">{student.full_name}</p>
-                  <p className="text-xs text-slate-400">{student.classes?.class_name || 'Class'} • ITS: {student.its_number}</p>
+                  <p className="text-xs text-slate-400">{student.classes?.class_name || 'Class'} • {ID_LABEL}: {student.its_number}</p>
                 </div>
               </div>
             ))}

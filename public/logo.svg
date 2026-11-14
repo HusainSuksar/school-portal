@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="School crest">
+  <!-- Generic school crest: shield, star and open book. Original artwork, free to replace. -->
+  <path d="M256 24 456 90v162c0 120-82 200-200 240C138 452 56 372 56 252V90Z" fill="#0f172a"/>
+  <path d="M256 52 430 109v143c0 104-70 174-174 211C152 426 82 356 82 252V109Z" fill="none" stroke="#facc15" stroke-width="8" stroke-linejoin="round"/>
+  <!-- star -->
+  <path d="m256 92 11.8 24 26.4 3.8-19.1 18.6 4.5 26.3L256 152.3l-23.6 12.4 4.5-26.3-19.1-18.6 26.4-3.8Z" fill="#facc15"/>
+  <!-- open book -->
+  <path d="M256 222c-34-22-82-27-122-14v150c40-13 88-8 122 14Z" fill="#f8fafc"/>
+  <path d="M256 222c34-22 82-27 122-14v150c-40-13-88-8-122 14Z" fill="#e2e8f0"/>
+  <path d="M256 222v150" stroke="#0f172a" stroke-width="6" stroke-linecap="round"/>
+  <g fill="none" stroke="#94a3b8" stroke-width="6" stroke-linecap="round">
+    <path d="M160 246c24-5 50-2 72 8M160 278c24-5 50-2 72 8M160 310c24-5 50-2 72 8"/>
+    <path d="M352 246c-24-5-50-2-72 8M352 278c-24-5-50-2-72 8M352 310c-24-5-50-2-72 8"/>
+  </g>
+  <!-- ribbon -->
+  <path d="M176 404c52 22 108 22 160 0v26c-52 22-108 22-160 0Z" fill="#facc15"/>
+</svg>

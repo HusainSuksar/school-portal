@@ -4,6 +4,7 @@ import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import InstallAppButton from './InstallAppButton';
 import NotificationBell from './NotificationBell';
+import { SCHOOL } from '../config/school';
 
 import {
   BookOpen, Users, Calendar, Settings, LogOut, HelpCircle, AlertTriangle,
@@ -162,7 +163,7 @@ export default function Layout() {
             <Menu className="w-6 h-6" />
           </button>
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-500">MSB Indore</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-500">{SCHOOL.name}</p>
             <h1 className="font-black text-school-navy text-sm leading-tight truncate max-w-[150px]">{getPageTitle(location.pathname)}</h1>
           </div>
         </div>
@@ -259,7 +260,7 @@ export default function Layout() {
                   <div className="space-y-1">
                     <NavLink to="/manage-students" className={navLinkClass} title="Manage Students"><Shield className="w-5 h-5 shrink-0" /> Manage Students</NavLink>
                     <NavLink to="/manage-teachers" className={navLinkClass} title="Manage Teachers"><Briefcase className="w-5 h-5 shrink-0" /> Manage Teachers</NavLink>
-                    <NavLink to="/its-audit" className={navLinkClass} title="ITS Audit"><Database className="w-5 h-5 shrink-0" /> ITS Audit</NavLink>
+                    <NavLink to="/data-audit" className={navLinkClass} title="Data Audit"><Database className="w-5 h-5 shrink-0" /> Data Audit</NavLink>
                     <NavLink to="/support-inbox" className={navLinkClass} title="Support Inbox"><Inbox className="w-5 h-5 shrink-0" /> Support Inbox</NavLink>
                     <NavLink to="/system-settings" className={navLinkClass} title="System Settings"><Settings className="w-5 h-5 shrink-0" /> System Settings</NavLink>
                     <NavLink to="/staff-onboarding" className={navLinkClass} title="Bulk Staff Onboarding"><Users className="w-5 h-5 shrink-0" /> Staff Onboarding</NavLink>
@@ -388,7 +389,7 @@ export default function Layout() {
                     <div className="space-y-1">
                       <NavLink to="/manage-students" className={mobileLinkClass}><Shield className="w-5 h-5 shrink-0" /> Manage Students</NavLink>
                       <NavLink to="/manage-teachers" className={mobileLinkClass}><Briefcase className="w-5 h-5 shrink-0" /> Manage Teachers</NavLink>
-                      <NavLink to="/its-audit" className={mobileLinkClass}><Database className="w-5 h-5 shrink-0" /> ITS Audit</NavLink>
+                      <NavLink to="/data-audit" className={mobileLinkClass}><Database className="w-5 h-5 shrink-0" /> Data Audit</NavLink>
                       <NavLink to="/support-inbox" className={mobileLinkClass}><Inbox className="w-5 h-5 shrink-0" /> Support Inbox</NavLink>
                       <NavLink to="/system-settings" className={mobileLinkClass}><Settings className="w-5 h-5 shrink-0" /> System Settings</NavLink>
                       <NavLink to="/staff-onboarding" className={mobileLinkClass}><Users className="w-5 h-5 shrink-0" /> Staff Onboarding</NavLink>

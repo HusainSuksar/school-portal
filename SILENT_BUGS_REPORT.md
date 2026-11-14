@@ -97,7 +97,7 @@ Components: `App.jsx`, `Layout.jsx`, `Login.jsx`, `Profile.jsx`, `NotificationBe
 - **Line Numbers:** Lines 6–10 & Line 40
 - **Bug Pattern:** Missing Server Environment Variables & Unhandled Admin Insert Error
 - **Why It Fails Silently:**
-  1. **Lines 6–10:** `webpush.setVapidDetails('mailto:admin@msbindore.org', process.env.VITE_PUBLIC_VAPID_KEY, process.env.PRIVATE_VAPID_KEY)` crashes with an unhandled exception if `PRIVATE_VAPID_KEY` or `VITE_PUBLIC_VAPID_KEY` are undefined in the environment.
+  1. **Lines 6–10:** `webpush.setVapidDetails('mailto:admin@example.com', process.env.VITE_PUBLIC_VAPID_KEY, process.env.PRIVATE_VAPID_KEY)` crashes with an unhandled exception if `PRIVATE_VAPID_KEY` or `VITE_PUBLIC_VAPID_KEY` are undefined in the environment.
   2. **Line 40:** `await supabaseAdmin.from('in_app_notifications').insert(inAppPayload);` does not check `{ error }`. If an insert fails, it proceeds directly to push subscriptions, leaving the database inbox unpopulated without logging the root cause.
 - **The Exact Fix:**
   Validate environment variables at initialization and throw a descriptive 500 error if missing. Destructure `{ error }` from `in_app_notifications` insert.

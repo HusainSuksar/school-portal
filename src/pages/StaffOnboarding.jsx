@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { UploadCloud, ShieldAlert, CheckCircle2, AlertTriangle, UserPlus, Shield } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { ID_LABEL_FULL } from '../config/school';
 import { onboardStaff, describeFirstFailure } from '../lib/adminApi';
 
 export default function StaffOnboarding() {
@@ -255,14 +256,14 @@ export default function StaffOnboarding() {
                 required
                 value={formData.fullName}
                 onChange={(e) => setFormData({...formData, fullName: e.target.value})}
-                placeholder="e.g. Alefiyah Bistanwala"
+                placeholder="e.g. Jane Doe"
                 className="w-full p-3 border border-slate-300 rounded-lg focus:outline-none focus:border-indigo-500 text-sm font-bold text-school-navy"
               />
             </div>
             
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">ITS Number</label>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">{ID_LABEL_FULL}</label>
                 <input 
                   type="text" 
                   required

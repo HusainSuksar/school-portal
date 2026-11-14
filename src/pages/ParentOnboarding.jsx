@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { UploadCloud, ShieldAlert, CheckCircle2, AlertTriangle, Link, UserPlus, Mail, Phone } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { ID_LABEL } from '../config/school';
 import { linkParents, describeFirstFailure } from '../lib/adminApi';
 
 export default function ParentOnboarding() {
@@ -239,7 +240,7 @@ export default function ParentOnboarding() {
           <form onSubmit={handleSingleSubmit} className="space-y-5 max-w-lg">
             
             <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 mb-6">
-               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">1. Target Student ITS</label>
+               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">1. Target Student {ID_LABEL}</label>
                <input 
                  type="text" 
                  required
@@ -257,7 +258,7 @@ export default function ParentOnboarding() {
                   type="text" 
                   value={formData.fatherName}
                   onChange={(e) => setFormData({...formData, fatherName: e.target.value})}
-                  placeholder="e.g. Mustafa Bhai"
+                  placeholder="e.g. John Smith"
                   className="w-full p-3 border border-slate-300 rounded-lg focus:outline-none focus:border-indigo-500 text-sm font-bold text-school-navy"
                 />
               </div>
@@ -267,14 +268,14 @@ export default function ParentOnboarding() {
                   type="text" 
                   value={formData.motherName}
                   onChange={(e) => setFormData({...formData, motherName: e.target.value})}
-                  placeholder="e.g. Fatema Ben"
+                  placeholder="e.g. Mary Smith"
                   className="w-full p-3 border border-slate-300 rounded-lg focus:outline-none focus:border-indigo-500 text-sm font-bold text-school-navy"
                 />
               </div>
             </div>
 
             <div className="pt-2">
-              <label className="block text-xs font-bold text-indigo-500 uppercase tracking-wider mb-2">Primary Parent ITS (Portal Login)</label>
+              <label className="block text-xs font-bold text-indigo-500 uppercase tracking-wider mb-2">Primary Parent {ID_LABEL} (Portal Login)</label>
               <input 
                 type="text" 
                 required

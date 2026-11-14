@@ -3,6 +3,7 @@
 // The service role key lives on the server; the browser only sends the
 // signed-in user's own access token so the server can check who is asking.
 import { postAsCurrentUser } from './apiClient';
+import { ID_LABEL } from '../config/school';
 
 const BATCH_SIZE = 10;
 
@@ -48,5 +49,5 @@ export function describeFirstFailure(rows, results, itsField) {
   const index = results.findIndex((r) => !r.ok);
   if (index === -1) return '';
   const its = rows[index]?.[itsField];
-  return ` First issue${its ? ` (ITS ${its})` : ''}: ${results[index].error}`;
+  return ` First issue${its ? ` (${ID_LABEL} ${its})` : ''}: ${results[index].error}`;
 }

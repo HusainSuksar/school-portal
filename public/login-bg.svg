@@ -1,0 +1,166 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
+  <!-- Classic schoolhouse illustration for the login background.
+       Original artwork drawn for this project (no third-party source); free to reuse or replace. -->
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#a9d8f5"/>
+      <stop offset="0.75" stop-color="#e6f3fb"/>
+      <stop offset="1" stop-color="#fdf1d3"/>
+    </linearGradient>
+    <linearGradient id="lawn" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#93c97f"/>
+      <stop offset="1" stop-color="#5fa457"/>
+    </linearGradient>
+    <linearGradient id="brick" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#bb5a41"/>
+      <stop offset="1" stop-color="#a44a34"/>
+    </linearGradient>
+    <radialGradient id="sun" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#fff6c9" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="#fff6c9" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- upper-floor window, 36 x 64 -->
+    <g id="winU">
+      <rect x="-4" y="-4" width="44" height="72" rx="2" fill="#f5efe2"/>
+      <rect width="36" height="64" fill="#9cc7de"/>
+      <path d="M18 0v64M0 32h36" stroke="#f5efe2" stroke-width="3"/>
+      <rect x="-7" y="68" width="50" height="6" fill="#e2d6bf"/>
+    </g>
+    <!-- ground-floor window, 36 x 80 -->
+    <g id="winL">
+      <rect x="-4" y="-4" width="44" height="88" rx="2" fill="#f5efe2"/>
+      <rect width="36" height="80" fill="#9cc7de"/>
+      <path d="M18 0v80M0 27h36M0 54h36" stroke="#f5efe2" stroke-width="3"/>
+      <rect x="-7" y="84" width="50" height="6" fill="#e2d6bf"/>
+    </g>
+    <!-- five-window row -->
+    <g id="rowU">
+      <use xlink:href="#winU" href="#winU" x="0"/><use xlink:href="#winU" href="#winU" x="52"/><use xlink:href="#winU" href="#winU" x="104"/><use xlink:href="#winU" href="#winU" x="156"/><use xlink:href="#winU" href="#winU" x="208"/>
+    </g>
+    <g id="rowL">
+      <use xlink:href="#winL" href="#winL" x="0"/><use xlink:href="#winL" href="#winL" x="52"/><use xlink:href="#winL" href="#winL" x="104"/><use xlink:href="#winL" href="#winL" x="156"/><use xlink:href="#winL" href="#winL" x="208"/>
+    </g>
+    <!-- arched pavilion window, 32 wide -->
+    <g id="winA">
+      <path d="M-4 84V16a20 20 0 0 1 40 0v68Z" fill="#f5efe2"/>
+      <path d="M0 80V16a16 16 0 0 1 32 0v64Z" fill="#9cc7de"/>
+      <path d="M16 0v80M0 40h32" stroke="#f5efe2" stroke-width="3"/>
+    </g>
+    <g id="tree">
+      <rect x="-9" y="-10" width="18" height="120" rx="6" fill="#7a5237"/>
+      <circle cx="0" cy="-70" r="78" fill="#3f8a4a"/>
+      <circle cx="-52" cy="-28" r="56" fill="#4f9a57"/>
+      <circle cx="54" cy="-30" r="58" fill="#4a9453"/>
+      <circle cx="-14" cy="-96" r="52" fill="#62ab63"/>
+      <circle cx="30" cy="-58" r="40" fill="#5aa55e"/>
+    </g>
+    <g id="cloud" fill="#ffffff">
+      <ellipse cx="0" cy="0" rx="90" ry="26"/>
+      <ellipse cx="-36" cy="-18" rx="44" ry="26"/>
+      <ellipse cx="22" cy="-26" rx="52" ry="32"/>
+      <ellipse cx="64" cy="-10" rx="36" ry="20"/>
+    </g>
+  </defs>
+
+  <!-- sky -->
+  <rect width="1600" height="900" fill="url(#sky)"/>
+  <circle cx="1330" cy="150" r="210" fill="url(#sun)"/>
+  <circle cx="1330" cy="150" r="46" fill="#fff3b0"/>
+  <use xlink:href="#cloud" href="#cloud" x="250" y="170" opacity="0.9"/>
+  <use xlink:href="#cloud" href="#cloud" x="1090" y="250" opacity="0.75" transform="translate(1090 250) scale(0.7) translate(-1090 -250)"/>
+  <use xlink:href="#cloud" href="#cloud" x="560" y="110" opacity="0.7" transform="translate(560 110) scale(0.55) translate(-560 -110)"/>
+
+  <!-- distant hills -->
+  <path d="M0 640C180 560 360 540 560 600c160-70 380-80 560-20 170-50 330-40 480 30v90H0Z" fill="#bfe0ae"/>
+  <path d="M0 670c220-60 420-50 640-10 260-50 620-50 960 20v60H0Z" fill="#a6d295"/>
+
+  <!-- lawn and path -->
+  <rect y="672" width="1600" height="228" fill="url(#lawn)"/>
+  <path d="M716 690h168l196 210H520Z" fill="#ecdcb8"/>
+  <path d="M716 690h168l196 210h-34L862 690Z" fill="#dccaa2" opacity="0.6"/>
+
+  <!-- back trees -->
+  <use xlink:href="#tree" href="#tree" transform="translate(330 600) scale(0.8)"/>
+  <use xlink:href="#tree" href="#tree" transform="translate(1272 600) scale(0.8)"/>
+
+  <!-- wings -->
+  <path d="M356 384h888l-56-64H412Z" fill="#59626f"/>
+  <path d="M356 384h888v8H356Z" fill="#454d58"/>
+  <rect x="380" y="392" width="840" height="284" fill="url(#brick)"/>
+  <rect x="380" y="392" width="840" height="12" fill="#efe6d2"/>
+  <rect x="380" y="496" width="840" height="8" fill="#c9694f"/>
+  <rect x="372" y="652" width="856" height="24" fill="#d9cdb8"/>
+  <!-- chimneys -->
+  <rect x="470" y="282" width="34" height="56" fill="#a44a34"/><rect x="464" y="276" width="46" height="10" fill="#efe6d2"/>
+  <rect x="1096" y="282" width="34" height="56" fill="#a44a34"/><rect x="1090" y="276" width="46" height="10" fill="#efe6d2"/>
+  <!-- wing windows -->
+  <use xlink:href="#rowU" href="#rowU" x="404" y="420"/>
+  <use xlink:href="#rowL" href="#rowL" x="404" y="532"/>
+  <use xlink:href="#rowU" href="#rowU" x="952" y="420"/>
+  <use xlink:href="#rowL" href="#rowL" x="952" y="532"/>
+
+  <!-- bell tower -->
+  <rect x="756" y="176" width="88" height="80" fill="#efe6d2"/>
+  <rect x="748" y="170" width="104" height="10" fill="#d9cdb8"/>
+  <rect x="764" y="112" width="72" height="60" fill="#efe6d2"/>
+  <path d="M780 172v-30a20 20 0 0 1 40 0v30Z" fill="#59626f"/>
+  <path d="M800 138c-9 0-12 8-12 18l-4 8h32l-4-8c0-10-3-18-12-18Z" fill="#facc15"/>
+  <circle cx="800" cy="168" r="4" fill="#d4a40f"/>
+  <path d="M750 114h100L800 52Z" fill="#59626f"/>
+  <path d="M800 52V14" stroke="#454d58" stroke-width="4" stroke-linecap="round"/>
+  <path d="M802 16l40 11-40 11Z" fill="#facc15"/>
+  <!-- clock -->
+  <circle cx="800" cy="216" r="26" fill="#0f172a"/>
+  <circle cx="800" cy="216" r="21" fill="#fffdf6"/>
+  <path d="M800 216v-14M800 216l10 6" stroke="#0f172a" stroke-width="3.500" stroke-linecap="round"/>
+
+  <!-- central pavilion -->
+  <rect x="660" y="312" width="280" height="364" fill="#a94a35"/>
+  <path d="M640 312h320L800 232Z" fill="#efe6d2"/>
+  <path d="M684 300h232L800 244Z" fill="#b5523b"/>
+  <circle cx="800" cy="278" r="14" fill="#efe6d2"/>
+  <rect x="640" y="308" width="320" height="16" fill="#efe6d2"/>
+  <rect x="640" y="324" width="320" height="6" fill="#d9cdb8"/>
+  <!-- pavilion windows -->
+  <use xlink:href="#winA" href="#winA" x="702" y="356"/>
+  <use xlink:href="#winA" href="#winA" x="784" y="356"/>
+  <use xlink:href="#winA" href="#winA" x="866" y="356"/>
+  <use xlink:href="#winA" href="#winA" x="702" y="524"/>
+  <use xlink:href="#winA" href="#winA" x="866" y="524"/>
+  <!-- columns -->
+  <g fill="#f7f1e3">
+    <rect x="672" y="336" width="22" height="316"/><rect x="742" y="336" width="22" height="316"/>
+    <rect x="836" y="336" width="22" height="316"/><rect x="906" y="336" width="22" height="316"/>
+  </g>
+  <g fill="#d9cdb8">
+    <rect x="667" y="330" width="32" height="10"/><rect x="737" y="330" width="32" height="10"/>
+    <rect x="831" y="330" width="32" height="10"/><rect x="901" y="330" width="32" height="10"/>
+    <rect x="667" y="644" width="32" height="10"/><rect x="737" y="644" width="32" height="10"/>
+    <rect x="831" y="644" width="32" height="10"/><rect x="901" y="644" width="32" height="10"/>
+  </g>
+  <!-- door -->
+  <path d="M766 654V540a34 34 0 0 1 68 0v114Z" fill="#f5efe2"/>
+  <path d="M772 654V542a28 28 0 0 1 56 0v112Z" fill="#5d3b27"/>
+  <path d="M772 546a28 28 0 0 1 56 0Z" fill="#9cc7de"/>
+  <path d="M800 518v136M772 546h56" stroke="#f5efe2" stroke-width="3"/>
+  <circle cx="793" cy="606" r="3" fill="#facc15"/><circle cx="807" cy="606" r="3" fill="#facc15"/>
+  <!-- steps -->
+  <rect x="740" y="654" width="120" height="12" fill="#efe6d2"/>
+  <rect x="728" y="666" width="144" height="12" fill="#e4d9c3"/>
+  <rect x="716" y="678" width="168" height="12" fill="#d9cdb8"/>
+
+  <!-- hedges -->
+  <g fill="#3f8a4a">
+    <ellipse cx="430" cy="680" rx="54" ry="22"/><ellipse cx="520" cy="682" rx="60" ry="24"/><ellipse cx="620" cy="680" rx="56" ry="22"/>
+    <ellipse cx="980" cy="680" rx="56" ry="22"/><ellipse cx="1080" cy="682" rx="60" ry="24"/><ellipse cx="1170" cy="680" rx="54" ry="22"/>
+  </g>
+  <g fill="#56a05b">
+    <ellipse cx="470" cy="676" rx="34" ry="14"/><ellipse cx="575" cy="676" rx="34" ry="14"/>
+    <ellipse cx="1025" cy="676" rx="34" ry="14"/><ellipse cx="1130" cy="676" rx="34" ry="14"/>
+  </g>
+
+  <!-- front trees -->
+  <use xlink:href="#tree" href="#tree" transform="translate(170 690) scale(1.25)"/>
+  <use xlink:href="#tree" href="#tree" transform="translate(1440 690) scale(1.25)"/>
+</svg>

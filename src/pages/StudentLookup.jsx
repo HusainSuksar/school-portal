@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, User, Award, CheckCircle2, AlertTriangle, Clock, ChevronRight, BookOpen, Star, ShieldAlert } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { ID_LABEL_FULL } from '../config/school';
 
 // Gamification Logic Helper
 const getRankBadge = (netPoints) => {
@@ -106,7 +107,7 @@ export default function StudentLookup() {
         <div className="relative w-full md:w-96 z-50">
           <div className="relative">
             <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input type="text" placeholder="Enter ITS number or name..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:outline-none focus:border-indigo-500 shadow-sm" />
+            <input type="text" placeholder={`Enter ${ID_LABEL_FULL.toLowerCase()} or name...`} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:outline-none focus:border-indigo-500 shadow-sm" />
             {isSearching && <div className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>}
           </div>
 

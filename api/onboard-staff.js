@@ -16,7 +16,7 @@ const OPTIONAL_FIELDS = ['designation', 'phone_number', 'personal_email', 'addre
 async function onboardStaffMember(admin, row) {
   const itsNumber = cleanIts(row.its_number);
   if (!itsNumber) {
-    throw new Error('ITS number is required and must contain digits only.');
+    throw new Error('ID number is required and must contain digits only.');
   }
 
   const role = text(row.role).toUpperCase() || 'TEACHER';
@@ -27,7 +27,7 @@ async function onboardStaffMember(admin, row) {
   // 1. Create the login (or find the existing one)
   const { userId, created } = await createLoginAccount(admin, itsNumber);
   if (!userId) {
-    throw new Error('A login already exists for this ITS but it has no profile to attach to.');
+    throw new Error('A login already exists for this ID but it has no profile to attach to.');
   }
 
   // 2. Create or update the profile. Optional columns are only touched when sent.

@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, Mail, Phone, MapPin, Lock, Camera, CheckCircle2, Loader2, ShieldCheck } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { ID_LABEL } from '../config/school';
 
 export default function Profile() {
   const [user, setUser] = useState(null);
@@ -132,7 +133,7 @@ export default function Profile() {
             <h3 className="text-lg font-black text-school-navy">{profile.full_name}</h3>
             <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-wider">{profile.role}</p>
             <div className="mt-4 flex items-center justify-center gap-1.5 text-xs font-bold bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 w-fit mx-auto text-slate-600">
-              <ShieldCheck className="w-4 h-4 text-indigo-500" /> ITS: {profile.its_number}
+              <ShieldCheck className="w-4 h-4 text-indigo-500" /> {ID_LABEL}: {profile.its_number}
             </div>
           </div>
         </div>

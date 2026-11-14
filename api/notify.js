@@ -19,7 +19,7 @@ const MAX_MESSAGE = 500;
 // Configure Web Push Keys safely
 if (process.env.VITE_PUBLIC_VAPID_KEY && process.env.PRIVATE_VAPID_KEY) {
   webpush.setVapidDetails(
-    'mailto:admin@msbindore.org',
+    process.env.VAPID_CONTACT || 'mailto:admin@example.com',
     process.env.VITE_PUBLIC_VAPID_KEY,
     process.env.PRIVATE_VAPID_KEY
   );

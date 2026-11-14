@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Key, User, ArrowRight, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { SCHOOL, ID_LABEL, ID_LABEL_FULL } from '../config/school';
 
 export default function Login() {
   const [itsNumber, setItsNumber] = useState('');
@@ -77,12 +78,12 @@ export default function Login() {
       {/* 1. Warm & Light Background Layer */}
       <div className="fixed inset-0 z-0">
         <img 
-          src="/MSB.jpeg" 
-          alt="MSB Indore Campus" 
+          src={SCHOOL.loginBackground}
+          alt="" 
           className="w-full h-full object-cover object-center scale-105 animate-in fade-in duration-1000"
         />
         {/* Warm ivory frosted glass overlay instead of dark navy */}
-        <div className="absolute inset-0 bg-amber-50/85 backdrop-blur-[4px]"></div>
+        <div className="absolute inset-0 bg-amber-50/55 backdrop-blur-[1px]"></div>
       </div>
 
       {/* 2. Elegant, Centered Ivory Card */}
@@ -91,12 +92,12 @@ export default function Login() {
         {/* Header: Official Letterhead Styling */}
         <div className="flex flex-col items-center mb-8">
           <img 
-            src="/MSB%20INDORE%20logo.jpeg" 
-            alt="MSB Logo" 
-            className="w-24 h-24 object-contain mix-blend-multiply mb-4" 
+            src={SCHOOL.logo}
+            alt={`${SCHOOL.name} logo`}
+            className="w-24 h-24 object-contain mb-4" 
           />
-          <h1 className="text-2xl font-bold text-school-navy tracking-tight text-center">MSB Indore</h1>
-          <p className="text-2xl font-bold text-school-navy tracking-tight text-center">Academic Portal</p>
+          <h1 className="text-2xl font-bold text-school-navy tracking-tight text-center">{SCHOOL.name}</h1>
+          <p className="text-2xl font-bold text-school-navy tracking-tight text-center">{SCHOOL.portalName}</p>
           
           <div className="mt-4 flex items-center gap-2 text-[11px] font-bold text-slate-400 uppercase tracking-widest">
             <span>{dates.gregorian}</span>
@@ -117,7 +118,7 @@ export default function Login() {
         <form onSubmit={handleLogin} className="space-y-4">
           
           <div className="space-y-1.5">
-            <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1">ITS ID</label>
+            <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1">{ID_LABEL_FULL}</label>
             <div className="relative">
               <User className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
               <input 
@@ -125,7 +126,7 @@ export default function Login() {
                 required 
                 value={itsNumber} 
                 onChange={(e) => setItsNumber(e.target.value)} 
-                placeholder="Enter 8-digit ITS" 
+                placeholder={`Enter 8-digit ${ID_LABEL}`}
                 className="w-full pl-11 pr-4 py-3 bg-amber-50/40 border border-amber-900/10 rounded-xl text-sm font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:border-school-navy focus:bg-white transition-all shadow-sm"
               />
             </div>
@@ -169,7 +170,7 @@ export default function Login() {
         <div className="mt-8 text-center border-t border-slate-100 pt-6">
           <p className="text-[11px] font-medium text-slate-400 leading-relaxed">
             Need credentials or facing issues? <br />
-            Please contact the <span className="font-bold text-slate-600">MSB Administration Office</span>.
+            Please contact the <span className="font-bold text-slate-600">{SCHOOL.officeName}</span>.
           </p>
         </div>
 

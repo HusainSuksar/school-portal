@@ -24,7 +24,7 @@ async function getOrCreateParent(admin, parentIts, fatherName, parentPhone) {
   // 2. Create the login
   const { userId, created } = await createLoginAccount(admin, parentIts);
   if (!userId) {
-    throw new Error('A login already exists for this parent ITS but it has no profile to attach to.');
+    throw new Error('A login already exists for this parent ID but it has no profile to attach to.');
   }
 
   // 3. Create the profile
@@ -48,7 +48,7 @@ async function linkParentToStudent(admin, row) {
   const studentIts = cleanIts(row.student_its);
   const parentIts = cleanIts(row.parent_its);
   if (!studentIts || !parentIts) {
-    throw new Error('Student ITS and parent ITS are required and must contain digits only.');
+    throw new Error('Student ID and parent ID are required and must contain digits only.');
   }
 
   const fatherName = text(row.father_name);
@@ -61,7 +61,7 @@ async function linkParentToStudent(admin, row) {
     .eq('its_number', studentIts)
     .maybeSingle();
   if (studentError) throw new Error(studentError.message);
-  if (!student) throw new Error(`Student with ITS ${studentIts} not found in database.`);
+  if (!student) throw new Error(`Student with ID ${studentIts} not found in database.`);
 
   // 2. Get or create the parent account
   const parentId = await getOrCreateParent(admin, parentIts, fatherName, text(row.parent_phone));

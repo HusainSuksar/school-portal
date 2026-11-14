@@ -88,7 +88,7 @@ export default function App() {
           <Route path="school-log-book" element={<SchoolLogBook />} />
           <Route path="manage-students" element={<ManageStudents />} />
           <Route path="manage-teachers" element={<ManageTeachers />} />
-          <Route path="its-audit" element={<ITSAudit />} />
+          <Route path="data-audit" element={<ITSAudit />} />
           <Route path="support-inbox" element={<SupportInbox />} />
           <Route path="help-centre" element={<HelpCentre />} />
           <Route path="system-settings" element={<SystemSettings />} />
