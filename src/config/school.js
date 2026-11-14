@@ -30,3 +30,8 @@ export const SCHOOL = {
 // their existing names.
 export const ID_LABEL = 'ID';
 export const ID_LABEL_FULL = 'ID Number';
+
+// Show the Hijri (Islamic calendar) date next to the Gregorian date on the
+// login page and in the Academic Calendar. Set to true for schools that
+// follow both calendars.
+export const SHOW_HIJRI_DATE = false;

@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Key, User, ArrowRight, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { SCHOOL, ID_LABEL, ID_LABEL_FULL } from '../config/school';
+import { SCHOOL, ID_LABEL, ID_LABEL_FULL, SHOW_HIJRI_DATE } from '../config/school';
 
 export default function Login() {
   const [itsNumber, setItsNumber] = useState('');
@@ -21,13 +21,15 @@ export default function Login() {
     });
     
     let hijri = '';
-    try {
-      const hijriFormatter = new Intl.DateTimeFormat('en-SA-u-ca-islamic', { 
-        day: 'numeric', month: 'long', year: 'numeric' 
-      });
-      hijri = hijriFormatter.format(today);
-    } catch (e) {
-      hijri = 'Islamic Calendar'; 
+    if (SHOW_HIJRI_DATE) {
+      try {
+        const hijriFormatter = new Intl.DateTimeFormat('en-SA-u-ca-islamic', { 
+          day: 'numeric', month: 'long', year: 'numeric' 
+        });
+        hijri = hijriFormatter.format(today);
+      } catch (e) {
+        hijri = 'Islamic Calendar'; 
+      }
     }
 
     setDates({ gregorian, hijri });
@@ -101,8 +103,12 @@ export default function Login() {
           
           <div className="mt-4 flex items-center gap-2 text-[11px] font-bold text-slate-400 uppercase tracking-widest">
             <span>{dates.gregorian}</span>
-            <span className="w-1 h-1 rounded-full bg-slate-300"></span>
-            <span className="text-amber-600/80">{dates.hijri}</span>
+            {SHOW_HIJRI_DATE && (
+              <>
+                <span className="w-1 h-1 rounded-full bg-slate-300"></span>
+                <span className="text-amber-600/80">{dates.hijri}</span>
+              </>
+            )}
           </div>
         </div>
 

@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Calendar as CalendarIcon, List, ChevronLeft, ChevronRight, Sun, Briefcase, Tent, Plus, Trash2 } from 'lucide-react';
 import HijriDate from '../lib/HijriDate';
 import { supabase } from '../lib/supabase';
+import { SHOW_HIJRI_DATE } from '../config/school';
 
 export default function AcademicCalendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -127,8 +128,8 @@ export default function AcademicCalendar() {
     <div className="max-w-7xl mx-auto space-y-6 pb-12">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-4 border-b border-slate-200">
         <div>
-          <h2 className="text-2xl font-bold text-school-navy flex items-center gap-2"><CalendarIcon className="w-6 h-6 text-indigo-500" /> Dual Academic Calendar</h2>
-          <p className="text-sm text-slate-500 font-medium mt-1">Gregorian and Hijri milestones synced with dynamic working day calculations.</p>
+          <h2 className="text-2xl font-bold text-school-navy flex items-center gap-2"><CalendarIcon className="w-6 h-6 text-indigo-500" /> {SHOW_HIJRI_DATE ? 'Dual Academic Calendar' : 'Academic Calendar'}</h2>
+          <p className="text-sm text-slate-500 font-medium mt-1">{SHOW_HIJRI_DATE ? 'Gregorian and Hijri milestones' : 'School milestones'} synced with dynamic working day calculations.</p>
         </div>
         <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
           <button onClick={() => setViewMode('grid')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${viewMode === 'grid' ? 'bg-white text-school-navy shadow-sm' : 'text-slate-500'}`}><CalendarIcon className="w-4 h-4" /> Grid</button>
@@ -191,10 +192,12 @@ export default function AcademicCalendar() {
                   <div key={dayObj.dateString} className={`min-h-[100px] p-2 md:p-3 rounded-xl border flex flex-col group relative ${isToday ? 'bg-indigo-50 border-indigo-300' : dayObj.isWeekend ? 'bg-slate-50 border-slate-100' : 'bg-white border-slate-200'}`}>
                     <div className="flex justify-between items-start">
                       <div className={`text-xl font-bold ${isToday ? 'text-indigo-700' : dayObj.isWeekend ? 'text-slate-400' : 'text-school-navy'}`}>{dayObj.day}</div>
-                      <div className="flex flex-col items-end text-right">
-                        <span className="text-sm font-bold text-amber-600">{dayObj.hDay}</span>
-                        <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 hidden md:block">{dayObj.hMonthShort}</span>
-                      </div>
+                      {SHOW_HIJRI_DATE && (
+                        <div className="flex flex-col items-end text-right">
+                          <span className="text-sm font-bold text-amber-600">{dayObj.hDay}</span>
+                          <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 hidden md:block">{dayObj.hMonthShort}</span>
+                        </div>
+                      )}
                     </div>
                     <div className="mt-auto pt-2 space-y-1">
                       {dayObj.events && dayObj.events.map(ev => (
