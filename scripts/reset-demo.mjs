@@ -209,7 +209,13 @@ async function wipe(users, avatars) {
   const queue = [...users];
   async function worker() {
     for (let user = queue.pop(); user; user = queue.pop()) {
-      const { error } = await admin.auth.admin.deleteUser(user.id);
+      // Retry a few times: a dropped connection should not abort a long run.
+      let error;
+      for (let attempt = 1; attempt <= 4; attempt++) {
+        ({ error } = await admin.auth.admin.deleteUser(user.id));
+        if (!error) break;
+        await new Promise((resolve) => setTimeout(resolve, attempt * 1000));
+      }
       if (error) fail(`delete login ${user.id}`, error);
       removed++;
       if (removed % 100 === 0) console.log(`  deleted ${removed} logins...`);
