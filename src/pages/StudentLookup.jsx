@@ -20,7 +20,7 @@ export default function StudentLookup() {
   const [isSearching, setIsSearching] = useState(false);
   
   const [selectedStudent, setSelectedStudent] = useState(null);
-  const [studentData, setStudentData] = useState({ attendancePct: 0, tashjee: 0, tanbeeh: 0, recentLogs: [], rank: null });
+  const [studentData, setStudentData] = useState({ attendancePct: 0, merit: 0, demerit: 0, recentLogs: [], rank: null });
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
 
   useEffect(() => {
@@ -75,15 +75,15 @@ export default function StudentLookup() {
       let tPts = 0; let bPts = 0;
       if (logs) {
         logs.forEach(log => {
-          if (log.log_type === 'Tashjee') tPts += log.points;
-          if (log.log_type === 'Tanbeeh') bPts += log.points;
+          if (log.log_type === 'Merit') tPts += log.points;
+          if (log.log_type === 'Demerit') bPts += log.points;
         });
       }
 
       setStudentData({
         attendancePct: attPct,
-        tashjee: tPts,
-        tanbeeh: bPts,
+        merit: tPts,
+        demerit: bPts,
         recentLogs: logs ? logs.slice(0, 10) : [],
         rank: getRankBadge(tPts - bPts)
       });
@@ -171,16 +171,16 @@ export default function StudentLookup() {
                   <div className="flex justify-between items-start mb-4">
                     <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center"><Award className="w-5 h-5 text-emerald-600" /></div>
                   </div>
-                  <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Total Tashjee</h3>
-                  <p className="text-3xl font-bold text-emerald-700">+{studentData.tashjee}</p>
+                  <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Total Merit</h3>
+                  <p className="text-3xl font-bold text-emerald-700">+{studentData.merit}</p>
                 </div>
 
                 <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col border-b-4 border-b-red-500">
                   <div className="flex justify-between items-start mb-4">
                     <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center"><AlertTriangle className="w-5 h-5 text-red-600" /></div>
                   </div>
-                  <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Total Tanbeeh</h3>
-                  <p className="text-3xl font-bold text-red-700">-{studentData.tanbeeh}</p>
+                  <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Total Demerit</h3>
+                  <p className="text-3xl font-bold text-red-700">-{studentData.demerit}</p>
                 </div>
               </div>
 
@@ -194,15 +194,15 @@ export default function StudentLookup() {
                     studentData.recentLogs.map((log, index) => (
                       <div key={index} className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
                         <div className="flex items-center gap-4">
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs ${log.log_type === 'Tashjee' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-                            {log.log_type === 'Tashjee' ? '+' : '-'}{log.points}
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs ${log.log_type === 'Merit' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                            {log.log_type === 'Merit' ? '+' : '-'}{log.points}
                           </div>
                           <div>
                             <p className="font-bold text-school-navy">{log.reason}</p>
                             <p className="text-xs text-slate-400 font-medium">Logged by {log.profiles?.full_name || 'Staff'} • {new Date(log.logged_at).toLocaleDateString()}</p>
                           </div>
                         </div>
-                        <span className={`text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider ${log.log_type === 'Tashjee' ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : 'bg-red-50 text-red-600 border border-red-200'}`}>
+                        <span className={`text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider ${log.log_type === 'Merit' ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : 'bg-red-50 text-red-600 border border-red-200'}`}>
                           {log.log_type}
                         </span>
                       </div>

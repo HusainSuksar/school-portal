@@ -10,8 +10,8 @@ export default function AdminDashboard() {
     totalStudents: 0,
     attendanceToday: 0,
     openTickets: 0,
-    tashjeeToday: 0,
-    tanbeehToday: 0
+    meritToday: 0,
+    demeritToday: 0
   });
   const [recentLogs, setRecentLogs] = useState([]);
 
@@ -67,12 +67,12 @@ export default function AdminDashboard() {
           .gte('logged_at', `${today}T00:00:00Z`)
           .order('logged_at', { ascending: false });
 
-        let tashjee = 0;
-        let tanbeeh = 0;
+        let merit = 0;
+        let demerit = 0;
         if (pointsToday) {
           pointsToday.forEach(log => {
-            if (log.log_type === 'Tashjee') tashjee++;
-            if (log.log_type === 'Tanbeeh') tanbeeh++;
+            if (log.log_type === 'Merit') merit++;
+            if (log.log_type === 'Demerit') demerit++;
           });
           setRecentLogs(pointsToday.slice(0, 5));
         }
@@ -92,8 +92,8 @@ export default function AdminDashboard() {
         setGlobalStats({
           totalStudents: studentCount || 0,
           openTickets: ticketCount || 0,
-          tashjeeToday: tashjee,
-          tanbeehToday: tanbeeh,
+          meritToday: merit,
+          demeritToday: demerit,
           attendanceToday: attPercentage
         });
 
@@ -204,9 +204,9 @@ export default function AdminDashboard() {
           </div>
           <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Today's Points</h3>
           <div className="flex items-center gap-3">
-            <p className="text-xl font-bold text-emerald-600">+{globalStats.tashjeeToday}</p>
+            <p className="text-xl font-bold text-emerald-600">+{globalStats.meritToday}</p>
             <span className="text-slate-300">/</span>
-            <p className="text-xl font-bold text-red-500">-{globalStats.tanbeehToday}</p>
+            <p className="text-xl font-bold text-red-500">-{globalStats.demeritToday}</p>
           </div>
         </div>
 
@@ -278,9 +278,9 @@ export default function AdminDashboard() {
                       <div className="absolute left-5 top-10 bottom-[-24px] w-0.5 bg-slate-100"></div>
                     )}
                     <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 z-10 ${
-                      log.log_type === 'Tashjee' ? 'text-emerald-500 bg-emerald-50' : 'text-red-500 bg-red-50'
+                      log.log_type === 'Merit' ? 'text-emerald-500 bg-emerald-50' : 'text-red-500 bg-red-50'
                     }`}>
-                      {log.log_type === 'Tashjee' ? <TrendingUp className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
+                      {log.log_type === 'Merit' ? <TrendingUp className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
                     </div>
                     <div className="pt-2">
                       <p className="text-sm font-bold text-slate-700">

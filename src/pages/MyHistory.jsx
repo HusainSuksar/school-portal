@@ -34,7 +34,7 @@ export default function MyHistory() {
           behaviors.forEach(item => combinedFeed.push({
             id: `beh_${item.id}`,
             type: 'behavior',
-            title: `Awarded ${item.log_type} (${item.log_type === 'Tashjee' ? '+' : '-'}${item.points} pts)`,
+            title: `Awarded ${item.log_type} (${item.log_type === 'Merit' ? '+' : '-'}${item.points} pts)`,
             description: `To ${item.students?.full_name} for: ${item.reason}`,
             date: item.logged_at,
             status: 'Completed'

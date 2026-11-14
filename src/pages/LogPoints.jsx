@@ -8,10 +8,10 @@ import { notifyUsers } from '../lib/apiClient';
 export default function LogPoints() {
   const [userRole, setUserRole] = useState(null);
   const [students, setStudents] = useState([]);
-  const [pointRules, setPointRules] = useState({ Tashjee: [], Tanbeeh: [] });
+  const [pointRules, setPointRules] = useState({ Merit: [], Demerit: [] });
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStudent, setSelectedStudent] = useState(null);
-  const [logType, setLogType] = useState('Tashjee');
+  const [logType, setLogType] = useState('Merit');
   const [selectedReason, setSelectedReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
@@ -38,7 +38,7 @@ export default function LogPoints() {
         .order('points', { ascending: false });
 
       if (rulesData) {
-        const rules = { Tashjee: [], Tanbeeh: [] };
+        const rules = { Merit: [], Demerit: [] };
         rulesData.forEach(r => {
           if (!rules[r.type]) rules[r.type] = [];
           rules[r.type].push(r);
@@ -118,7 +118,7 @@ export default function LogPoints() {
             <Award className="w-6 h-6 text-indigo-500" />
             Log Behavior Points
           </h2>
-          <p className="text-sm text-slate-500 font-medium mt-1">Award Tashjee or Tanbeeh points to students.</p>
+          <p className="text-sm text-slate-500 font-medium mt-1">Award Merit or Demerit points to students.</p>
         </div>
       </div>
 
@@ -188,18 +188,18 @@ export default function LogPoints() {
               <div className="grid grid-cols-2 gap-3 mb-6">
                 <button 
                   type="button"
-                  onClick={() => { setLogType('Tashjee'); setSelectedReason(''); }}
+                  onClick={() => { setLogType('Merit'); setSelectedReason(''); }}
                   className={`py-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2 border transition-colors ${
-                    logType === 'Tashjee' ? 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-sm' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
+                    logType === 'Merit' ? 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-sm' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
                   }`}
                 >
                   <Award className="w-4 h-4" /> Appreciative
                 </button>
                 <button 
                   type="button"
-                  onClick={() => { setLogType('Tanbeeh'); setSelectedReason(''); }}
+                  onClick={() => { setLogType('Demerit'); setSelectedReason(''); }}
                   className={`py-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2 border transition-colors ${
-                    logType === 'Tanbeeh' ? 'bg-red-50 border-red-500 text-red-700 shadow-sm' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
+                    logType === 'Demerit' ? 'bg-red-50 border-red-500 text-red-700 shadow-sm' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
                   }`}
                 >
                   <ShieldAlert className="w-4 h-4" /> Behavioral
@@ -218,7 +218,7 @@ export default function LogPoints() {
                   <option value="" disabled>-- Select a reason --</option>
                   {(pointRules[logType] || []).map((opt, idx) => (
                     <option key={idx} value={opt.reason}>
-                      {opt.reason} ({logType === 'Tashjee' ? '+' : '-'}{opt.points} PTS)
+                      {opt.reason} ({logType === 'Merit' ? '+' : '-'}{opt.points} PTS)
                     </option>
                   ))}
                 </select>
@@ -228,7 +228,7 @@ export default function LogPoints() {
                 type="submit"
                 disabled={isSubmitting || !selectedReason}
                 className={`w-full py-4 rounded-xl text-sm font-bold transition-all shadow-md flex items-center justify-center gap-2 mt-auto ${
-                  logType === 'Tashjee' 
+                  logType === 'Merit' 
                     ? 'bg-emerald-600 hover:bg-emerald-700 text-white disabled:bg-slate-300' 
                     : 'bg-red-600 hover:bg-red-700 text-white disabled:bg-slate-300'
                 }`}

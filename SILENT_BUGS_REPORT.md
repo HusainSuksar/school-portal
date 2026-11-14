@@ -396,10 +396,10 @@ Components: `LogPoints.jsx`, `ClassSummaries.jsx`, `StudentLookup.jsx`, `MyHisto
 - **Why It Fails Silently:**
   1. **Line 33:**
      ```javascript
-     const rules = { Tashjee: [], Tanbeeh: [] };
+     const rules = { Merit: [], Demerit: [] };
      rulesData.forEach(r => rules[r.type].push(r));
      ```
-     If any row in `point_rules` has a type other than `'Tashjee'` or `'Tanbeeh'` (such as lowercase `'tashjee'` or whitespace), `rules[r.type]` is undefined. Calling `.push()` throws: `TypeError: Cannot read properties of undefined (reading 'push')`, crashing the page on load.
+     If any row in `point_rules` has a type other than `'Merit'` or `'Demerit'` (such as lowercase `'merit'` or whitespace), `rules[r.type]` is undefined. Calling `.push()` throws: `TypeError: Cannot read properties of undefined (reading 'push')`, crashing the page on load.
   2. **Lines 51 & 58:**
      `const reasonData = pointRules[logType].find(opt => opt.reason === selectedReason);`
      `points: reasonData.points`

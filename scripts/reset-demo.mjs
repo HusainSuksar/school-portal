@@ -103,15 +103,15 @@ const TICKET_SECTIONS = [
   { section_id: 'HIGH', section_name: 'High School (Class 9-12)', owner: 'hos' },
 ];
 
-// "Tashjee" (merit) and "Tanbeeh" (demerit) are the two point types the database accepts.
+// "Merit" and "Demerit" are the two point types the database accepts.
 const POINT_RULES = [
-  { type: 'Tashjee', reason: 'Excellent homework', points: 5 },
-  { type: 'Tashjee', reason: 'Helping a classmate', points: 3 },
-  { type: 'Tashjee', reason: 'Active class participation', points: 2 },
-  { type: 'Tashjee', reason: 'Neat uniform', points: 2 },
-  { type: 'Tanbeeh', reason: 'Disrupting the class', points: 5 },
-  { type: 'Tanbeeh', reason: 'Incomplete homework', points: 3 },
-  { type: 'Tanbeeh', reason: 'Late to class', points: 2 },
+  { type: 'Merit', reason: 'Excellent homework', points: 5 },
+  { type: 'Merit', reason: 'Helping a classmate', points: 3 },
+  { type: 'Merit', reason: 'Active class participation', points: 2 },
+  { type: 'Merit', reason: 'Neat uniform', points: 2 },
+  { type: 'Demerit', reason: 'Disrupting the class', points: 5 },
+  { type: 'Demerit', reason: 'Incomplete homework', points: 3 },
+  { type: 'Demerit', reason: 'Late to class', points: 2 },
 ];
 
 // First student in each list is a child of the demo parent.
@@ -341,12 +341,12 @@ async function seed(password) {
 
   const class5 = inClass('Class 5');
   await insert('behavior_logs', [
-    { student_id: class5[0].id, teacher_id: users.teacher, log_type: 'Tashjee', points: 5, reason: 'Excellent homework' },
-    { student_id: class5[0].id, teacher_id: users.classTeacher, log_type: 'Tashjee', points: 2, reason: 'Active class participation' },
-    { student_id: class5[1].id, teacher_id: users.classTeacher, log_type: 'Tashjee', points: 3, reason: 'Helping a classmate' },
-    { student_id: class5[2].id, teacher_id: users.teacher, log_type: 'Tanbeeh', points: 2, reason: 'Late to class' },
-    { student_id: class5[3].id, teacher_id: users.teacher, log_type: 'Tashjee', points: 2, reason: 'Neat uniform' },
-    { student_id: class5[4].id, teacher_id: users.classTeacher, log_type: 'Tanbeeh', points: 3, reason: 'Incomplete homework' },
+    { student_id: class5[0].id, teacher_id: users.teacher, log_type: 'Merit', points: 5, reason: 'Excellent homework' },
+    { student_id: class5[0].id, teacher_id: users.classTeacher, log_type: 'Merit', points: 2, reason: 'Active class participation' },
+    { student_id: class5[1].id, teacher_id: users.classTeacher, log_type: 'Merit', points: 3, reason: 'Helping a classmate' },
+    { student_id: class5[2].id, teacher_id: users.teacher, log_type: 'Demerit', points: 2, reason: 'Late to class' },
+    { student_id: class5[3].id, teacher_id: users.teacher, log_type: 'Merit', points: 2, reason: 'Neat uniform' },
+    { student_id: class5[4].id, teacher_id: users.classTeacher, log_type: 'Demerit', points: 3, reason: 'Incomplete homework' },
   ]);
 
   // Term 1 results: marks for Class 5, letter grades for Class 2.

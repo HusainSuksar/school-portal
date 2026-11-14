@@ -10,7 +10,7 @@ export default function TeacherDashboard() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const [teacherName, setTeacherName] = useState('Teacher');
-  const [stats, setStats] = useState({ tashjeeGiven: 0, tanbeehGiven: 0 });
+  const [stats, setStats] = useState({ meritGiven: 0, demeritGiven: 0 });
   const [recentLogs, setRecentLogs] = useState([]);
   
   // Timetable State
@@ -37,8 +37,8 @@ export default function TeacherDashboard() {
 
         if (logs) {
           setStats({
-            tashjeeGiven: logs.filter(l => l.log_type === 'Tashjee').length,
-            tanbeehGiven: logs.filter(l => l.log_type === 'Tanbeeh').length
+            meritGiven: logs.filter(l => l.log_type === 'Merit').length,
+            demeritGiven: logs.filter(l => l.log_type === 'Demerit').length
           });
           setRecentLogs(logs.slice(0, 5).map(log => ({
             id: log.id,
@@ -226,9 +226,9 @@ export default function TeacherDashboard() {
                   <div key={log.id} className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
                     <div className="flex items-center gap-3">
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
-                        log.type === 'Tashjee' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+                        log.type === 'Merit' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
                       }`}>
-                        {log.type === 'Tashjee' ? '+' : '-'}{log.pts}
+                        {log.type === 'Merit' ? '+' : '-'}{log.pts}
                       </div>
                       <div className="min-w-0">
                         <p className="font-bold text-sm text-school-navy truncate">{log.student}</p>

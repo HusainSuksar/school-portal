@@ -84,8 +84,8 @@ export default function SchoolLogBook() {
         </div>
         <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200 w-full md:w-auto">
           <button onClick={() => setFilterType('All')} className={`flex-1 md:flex-none px-4 py-1.5 rounded-md text-sm font-bold transition-all ${filterType === 'All' ? 'bg-white text-school-navy shadow-sm' : 'text-slate-500'}`}>All Logs</button>
-          <button onClick={() => setFilterType('Tashjee')} className={`flex-1 md:flex-none px-4 py-1.5 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-1 ${filterType === 'Tashjee' ? 'bg-emerald-100 text-emerald-700 shadow-sm' : 'text-slate-500'}`}><TrendingUp className="w-4 h-4" /> Tashjee</button>
-          <button onClick={() => setFilterType('Tanbeeh')} className={`flex-1 md:flex-none px-4 py-1.5 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-1 ${filterType === 'Tanbeeh' ? 'bg-red-100 text-red-700 shadow-sm' : 'text-slate-500'}`}><AlertTriangle className="w-4 h-4" /> Tanbeeh</button>
+          <button onClick={() => setFilterType('Merit')} className={`flex-1 md:flex-none px-4 py-1.5 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-1 ${filterType === 'Merit' ? 'bg-emerald-100 text-emerald-700 shadow-sm' : 'text-slate-500'}`}><TrendingUp className="w-4 h-4" /> Merit</button>
+          <button onClick={() => setFilterType('Demerit')} className={`flex-1 md:flex-none px-4 py-1.5 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-1 ${filterType === 'Demerit' ? 'bg-red-100 text-red-700 shadow-sm' : 'text-slate-500'}`}><AlertTriangle className="w-4 h-4" /> Demerit</button>
         </div>
       </div>
 
@@ -109,8 +109,8 @@ export default function SchoolLogBook() {
                 {filteredLogs.length > 0 ? filteredLogs.map(log => (
                   <tr key={log.id} className="hover:bg-slate-50 transition-colors group">
                     <td className="p-4">
-                      <span className={`flex items-center justify-center w-8 h-8 rounded-full ${log.log_type === 'Tashjee' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'}`}>
-                        {log.log_type === 'Tashjee' ? <TrendingUp className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
+                      <span className={`flex items-center justify-center w-8 h-8 rounded-full ${log.log_type === 'Merit' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'}`}>
+                        {log.log_type === 'Merit' ? <TrendingUp className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
                       </span>
                     </td>
                     <td className="p-4">
@@ -122,7 +122,7 @@ export default function SchoolLogBook() {
                     </td>
                     <td className="p-4 max-w-xs">
                       <p className="text-sm font-bold text-slate-700">
-                        <span className={log.log_type === 'Tashjee' ? 'text-emerald-600' : 'text-red-600'}>{log.log_type === 'Tashjee' ? '+' : '-'}{log.points} Pts</span>
+                        <span className={log.log_type === 'Merit' ? 'text-emerald-600' : 'text-red-600'}>{log.log_type === 'Merit' ? '+' : '-'}{log.points} Pts</span>
                       </p>
                       <p className="text-xs text-slate-500 truncate mt-0.5">{log.reason}</p>
                     </td>

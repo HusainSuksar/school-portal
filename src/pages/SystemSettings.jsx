@@ -19,7 +19,7 @@ export default function SystemSettings() {
 
   // Dynamic Point Rules State
   const [pointRules, setPointRules] = useState([]);
-  const [newRuleType, setNewRuleType] = useState('Tashjee');
+  const [newRuleType, setNewRuleType] = useState('Merit');
   const [newRuleReason, setNewRuleReason] = useState('');
   const [newRulePoints, setNewRulePoints] = useState(1);
   const [isAddingRule, setIsAddingRule] = useState(false);
@@ -207,8 +207,8 @@ export default function SystemSettings() {
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Point Type</label>
                 <select value={newRuleType} onChange={(e) => setNewRuleType(e.target.value)} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500">
-                  <option value="Tashjee">Tashjee (Appreciative / Positive)</option>
-                  <option value="Tanbeeh">Tanbeeh (Behavioral / Deductive)</option>
+                  <option value="Merit">Merit (Appreciative / Positive)</option>
+                  <option value="Demerit">Demerit (Behavioral / Deductive)</option>
                 </select>
               </div>
               <div>
@@ -239,7 +239,7 @@ export default function SystemSettings() {
                   {pointRules.map(rule => (
                     <tr key={rule.id} className="hover:bg-slate-50">
                       <td className="p-3">
-                        <span className={`text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider ${rule.type === 'Tashjee' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                        <span className={`text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider ${rule.type === 'Merit' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
                           {rule.type}
                         </span>
                       </td>

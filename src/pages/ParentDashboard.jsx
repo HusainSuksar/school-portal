@@ -74,7 +74,7 @@ export default function ParentDashboard() {
     let tPts = 0; let bPts = 0;
     if (logsData) {
       logsData.forEach(l => {
-        if (l.log_type === 'Tashjee') tPts += l.points;
+        if (l.log_type === 'Merit') tPts += l.points;
         else bPts += l.points;
       });
     }

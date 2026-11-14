@@ -78,11 +78,11 @@ export default function ClassSummaries() {
       const aggregatedData = students.map(student => {
         // Calculate Points
         const studentLogs = logs ? logs.filter(l => l.student_id === student.id) : [];
-        let tashjee = 0;
-        let tanbeeh = 0;
+        let merit = 0;
+        let demerit = 0;
         studentLogs.forEach(l => {
-          if (l.log_type === 'Tashjee') tashjee += l.points;
-          if (l.log_type === 'Tanbeeh') tanbeeh += l.points;
+          if (l.log_type === 'Merit') merit += l.points;
+          if (l.log_type === 'Demerit') demerit += l.points;
         });
 
         // Calculate Attendance
@@ -94,9 +94,9 @@ export default function ClassSummaries() {
           id: student.id,
           name: student.full_name,
           its: student.its_number,
-          tashjee,
-          tanbeeh,
-          netPoints: tashjee - tanbeeh,
+          merit,
+          demerit,
+          netPoints: merit - demerit,
           attPct
         };
       });
@@ -236,10 +236,10 @@ export default function ClassSummaries() {
                         </span>
                       </td>
                       <td className="p-4 text-center">
-                        <span className="text-sm font-bold text-emerald-600">+{student.tashjee}</span>
+                        <span className="text-sm font-bold text-emerald-600">+{student.merit}</span>
                       </td>
                       <td className="p-4 text-center">
-                        <span className="text-sm font-bold text-red-500">-{student.tanbeeh}</span>
+                        <span className="text-sm font-bold text-red-500">-{student.demerit}</span>
                       </td>
                       <td className="p-4 text-right">
                         <span className="text-sm font-bold text-school-navy">{student.netPoints}</span>
