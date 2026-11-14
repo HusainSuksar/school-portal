@@ -1,8 +1,8 @@
 // src/pages/StaffOnboarding.jsx
 import React, { useState, useEffect } from 'react';
 import { UploadCloud, ShieldAlert, CheckCircle2, AlertTriangle, UserPlus, Shield } from 'lucide-react';
-import { createClient } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import { onboardStaff, describeFirstFailure } from '../lib/adminApi';
 
 export default function StaffOnboarding() {
   // Authorization State
@@ -49,15 +49,6 @@ export default function StaffOnboarding() {
     verifyAuth();
   }, []);
 
-  // --- Common Admin Client Setup ---
-  const getAdminClient = () => {
-    return createClient(
-      import.meta.env.VITE_SUPABASE_URL,
-      import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY,
-      { auth: { autoRefreshToken: false, persistSession: false } }
-    );
-  };
-
   // --- SINGLE STAFF LOGIC ---
   const handleSingleSubmit = async (e) => {
     e.preventDefault();
@@ -65,47 +56,16 @@ export default function StaffOnboarding() {
     setStatus({ type: '', msg: '' });
 
     try {
-      const supabaseAdmin = getAdminClient();
-      const proxyEmail = `${formData.itsNumber}@msb.local`;
-
-      // 1. Create the Auth Account (or find existing)
-      const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-        email: proxyEmail,
-        password: '786110', // Default password for new accounts
-        email_confirm: true
-      });
-
-      let userId = authData?.user?.id;
-
-      if (authError) {
-        if (authError.message.includes('already exists')) {
-          const { data: existingProfile } = await supabaseAdmin
-            .from('profiles')
-            .select('id')
-            .eq('its_number', formData.itsNumber)
-            .maybeSingle();
-          if (existingProfile) {
-            userId = existingProfile.id;
-          }
-        } else {
-          throw authError;
-        }
-      }
-
-      if (!userId) {
-        throw new Error("Could not resolve user ID for this account.");
-      }
-
-      // 2. Inject or Update the Profile
-      const { error: profileError } = await supabaseAdmin.from('profiles').upsert({
-        id: userId,
-        full_name: formData.fullName,
-        role: formData.role,
+      // The server creates the login + profile after verifying this user is ADMIN/HOS
+      const [result] = await onboardStaff([{
         its_number: formData.itsNumber,
-        requires_password_change: true
-      });
+        full_name: formData.fullName,
+        role: formData.role
+      }]);
 
-      if (profileError) throw profileError;
+      if (!result?.ok) {
+        throw new Error(result?.error || 'Failed to add staff member.');
+      }
 
       setStatus({ type: 'success', msg: `${formData.fullName} has been successfully provisioned.` });
       setFormData({ fullName: '', itsNumber: '', role: 'TEACHER' });
@@ -178,76 +138,35 @@ export default function StaffOnboarding() {
         throw new Error("Missing critical column: 'its_number'. Please check your CSV headers.");
       }
 
-      const supabaseAdmin = getAdminClient();
-      let successCount = 0;
-      let errorCount = 0;
       const validRoles = ['ADMIN', 'HOS', 'TEACHER', 'CLASS_TR'];
 
-      for (const staff of staffList) {
-        try {
-          if (!staff.its_number) continue;
-
-          const proxyEmail = `${staff.its_number}@msb.local`;
+      const rows = staffList
+        .filter((staff) => staff.its_number)
+        .map((staff) => {
           const rawRole = (staff.role || '').trim().toUpperCase();
-          const finalRole = validRoles.includes(rawRole) ? rawRole : 'TEACHER';
-
-          const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-            email: proxyEmail,
-            password: '786110',
-            email_confirm: true
-          });
-
-          let userId = authData?.user?.id;
-
-          if (authError) {
-            if (authError.message.includes('already exists')) {
-              const { data: existingProfile } = await supabaseAdmin
-                .from('profiles')
-                .select('id')
-                .eq('its_number', staff.its_number)
-                .maybeSingle();
-              if (existingProfile) {
-                userId = existingProfile.id;
-              }
-            } else {
-              console.warn(`Auth creation failed for ${staff.its_number}:`, authError.message);
-              errorCount++;
-              continue;
-            }
-          }
-
-          if (!userId) {
-            errorCount++;
-            continue;
-          }
-
-          const { error: profileError } = await supabaseAdmin.from('profiles').upsert({
-            id: userId,
-            full_name: staff.full_name || 'Staff Member',
-            role: finalRole,
+          return {
             its_number: staff.its_number,
+            full_name: staff.full_name || 'Staff Member',
+            role: validRoles.includes(rawRole) ? rawRole : 'TEACHER',
             designation: staff.designation || null,
             phone_number: staff.phone_number || null,
             personal_email: staff.personal_email || null,
-            address: staff.address || null,
-            requires_password_change: true
-          });
+            address: staff.address || null
+          };
+        });
 
-          if (profileError) {
-            console.error(`Failed to inject profile for ${staff.its_number}:`, profileError);
-            errorCount++;
-          } else {
-            successCount++;
-          }
-        } catch (rowErr) {
-          console.error(`Failed processing row for ${staff.its_number}:`, rowErr);
-          errorCount++;
-        }
-      }
+      // The server creates the logins + profiles after verifying this user is ADMIN/HOS
+      const results = await onboardStaff(rows);
+      const successCount = results.filter((r) => r.ok).length;
+      const errorCount = results.length - successCount;
+
+      results.forEach((r, i) => {
+        if (!r.ok) console.warn(`Onboarding failed for ${rows[i]?.its_number}:`, r.error);
+      });
 
       setStatus({ 
         type: errorCount === 0 ? 'success' : 'error', 
-        msg: `Successfully onboarded ${successCount} faculty members.${errorCount > 0 ? ` Encountered issues with ${errorCount} records.` : ''}` 
+        msg: `Successfully onboarded ${successCount} faculty members.${errorCount > 0 ? ` Encountered issues with ${errorCount} records.${describeFirstFailure(rows, results, 'its_number')}` : ''}` 
       });
       setFile(null);
       setPreviewCount(0);

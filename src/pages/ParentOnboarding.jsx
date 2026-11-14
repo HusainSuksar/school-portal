@@ -1,8 +1,8 @@
 // src/pages/ParentOnboarding.jsx
 import React, { useState, useEffect } from 'react';
 import { UploadCloud, ShieldAlert, CheckCircle2, AlertTriangle, Link, UserPlus, Mail, Phone } from 'lucide-react';
-import { createClient } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import { linkParents, describeFirstFailure } from '../lib/adminApi';
 
 export default function ParentOnboarding() {
   const [isAuthorized, setIsAuthorized] = useState(true);
@@ -47,119 +47,27 @@ export default function ParentOnboarding() {
     verifyAuth();
   }, []);
 
-  const getAdminClient = () => {
-    return createClient(
-      import.meta.env.VITE_SUPABASE_URL,
-      import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY,
-      { auth: { autoRefreshToken: false, persistSession: false } }
-    );
-  };
-
-  // Helper to fetch an existing parent or create a new one safely
-  const getOrCreateParent = async (supabaseAdmin, parentIts, fatherName, parentEmail, parentPhone) => {
-    // 1. Check if Parent already exists in profiles
-    const { data: existingProfile, error: profileErr } = await supabaseAdmin
-      .from('profiles')
-      .select('id')
-      .eq('its_number', parentIts)
-      .maybeSingle();
-
-    if (profileErr) {
-      console.warn("Profile check warning:", profileErr.message);
-    }
-
-    if (existingProfile) {
-      return existingProfile.id;
-    }
-
-    // 2. Provision new Auth Account using safe proxy email format
-    const proxyEmail = `${parentIts}@msb.local`;
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email: proxyEmail,
-      password: '786110', // Default parent password
-      email_confirm: true
-    });
-
-    // If the user already exists in auth, find their UID from profiles or list users
-    if (authError && !authError.message.includes('already exists')) {
-      throw authError;
-    }
-
-    let targetUserId = authData?.user?.id;
-
-    if (!targetUserId) {
-      // Fallback lookup if auth user already existed
-      const { data: fallbackUser } = await supabaseAdmin
-        .from('profiles')
-        .select('id')
-        .eq('its_number', parentIts)
-        .maybeSingle();
-      if (fallbackUser) return fallbackUser.id;
-      return null;
-    }
-    
-    // 3. Inject Profile (Mapping basic required attributes)
-    if (targetUserId) {
-      const { error: upsertError } = await supabaseAdmin.from('profiles').upsert({
-        id: targetUserId,
-        full_name: `${fatherName || 'Parent'} (Parent)`,
-        role: 'PARENT',
-        its_number: parentIts,
-        phone_number: parentPhone || null,
-        requires_password_change: true
-      });
-      
-      if (upsertError) {
-        console.warn("Profile upsert warning:", upsertError.message);
-      }
-      return targetUserId;
-    }
-    
-    return null;
-  };
-
   const handleSingleSubmit = async (e) => {
     e.preventDefault();
     setIsProcessing(true);
     setStatus({ type: '', msg: '' });
 
     try {
-      const supabaseAdmin = getAdminClient();
-      
-      // 1. Ensure the student actually exists first
-      const { data: student, error: studentError } = await supabaseAdmin
-        .from('students')
-        .select('id, full_name')
-        .eq('its_number', formData.studentIts)
-        .maybeSingle();
-        
-      if (studentError) throw studentError;
-      if (!student) throw new Error(`Student with ITS ${formData.studentIts} not found in database.`);
+      // The server checks the student exists, creates/fetches the parent account
+      // and links them, after verifying this user is ADMIN/HOS
+      const [result] = await linkParents([{
+        student_its: formData.studentIts,
+        parent_its: formData.parentIts,
+        father_name: formData.fatherName,
+        mother_name: formData.motherName,
+        parent_phone: formData.parentPhone
+      }]);
 
-      // 2. Get or Create the Parent Account
-      const parentId = await getOrCreateParent(
-        supabaseAdmin, 
-        formData.parentIts, 
-        formData.fatherName, 
-        formData.parentEmail, 
-        formData.parentPhone
-      );
-      if (!parentId) throw new Error("Failed to resolve Parent Account.");
+      if (!result?.ok) {
+        throw new Error(result?.error || 'Failed to link parent and student.');
+      }
 
-      // 3. Link them together
-      const { error: updateError } = await supabaseAdmin
-        .from('students')
-        .update({
-          parent_id: parentId,
-          father_name: formData.fatherName || null,
-          mother_name: formData.motherName || null,
-          primary_parent_its: formData.parentIts
-        })
-        .eq('its_number', formData.studentIts);
-
-      if (updateError) throw updateError;
-
-      setStatus({ type: 'success', msg: `Successfully linked Parent (${formData.parentIts}) to Student ${student.full_name || formData.studentIts}.` });
+      setStatus({ type: 'success', msg: `Successfully linked Parent (${formData.parentIts}) to Student ${result.student_name || formData.studentIts}.` });
       setFormData({ studentIts: '', fatherName: '', motherName: '', parentIts: '', parentEmail: '', parentPhone: '' });
 
     } catch (err) {
@@ -231,49 +139,28 @@ export default function ParentOnboarding() {
         throw new Error("Missing required columns. Please ensure 'student_its' and 'parent_its' exist.");
       }
 
-      const supabaseAdmin = getAdminClient();
-      let successCount = 0;
-      let errorCount = 0;
+      const rows = records
+        .filter((row) => row.student_its && row.parent_its)
+        .map((row) => ({
+          student_its: row.student_its,
+          parent_its: row.parent_its,
+          father_name: row.father_name || null,
+          mother_name: row.mother_name || null,
+          parent_phone: row.parent_phone || null
+        }));
 
-      for (const row of records) {
-        try {
-          if (!row.student_its || !row.parent_its) continue;
+      // The server provisions the parents and links the students after verifying this user is ADMIN/HOS
+      const results = await linkParents(rows);
+      const successCount = results.filter((r) => r.ok).length;
+      const errorCount = results.length - successCount;
 
-          // Provision/Fetch Parent
-          const parentId = await getOrCreateParent(
-            supabaseAdmin, 
-            row.parent_its, 
-            row.father_name,
-            row.parent_email,
-            row.parent_phone
-          );
-          
-          if (parentId) {
-            // Update Student
-            const { error } = await supabaseAdmin
-              .from('students')
-              .update({
-                parent_id: parentId,
-                father_name: row.father_name || null,
-                mother_name: row.mother_name || null,
-                primary_parent_its: row.parent_its
-              })
-              .eq('its_number', row.student_its);
-              
-            if (!error) successCount++;
-            else errorCount++;
-          } else {
-            errorCount++;
-          }
-        } catch (rowErr) {
-          console.error(`Failed on row student ${row.student_its}:`, rowErr);
-          errorCount++;
-        }
-      }
+      results.forEach((r, i) => {
+        if (!r.ok) console.warn(`Failed on row student ${rows[i]?.student_its}:`, r.error);
+      });
 
       setStatus({ 
         type: errorCount === 0 ? 'success' : 'error', 
-        msg: `Linked ${successCount} students successfully. ${errorCount > 0 ? `Failed to link ${errorCount} records.` : ''}` 
+        msg: `Linked ${successCount} students successfully. ${errorCount > 0 ? `Failed to link ${errorCount} records.${describeFirstFailure(rows, results, 'student_its')}` : ''}` 
       });
       
       setFile(null);
